@@ -1,9 +1,8 @@
 import * as THREE from 'three';
-import { Font } from 'three/addons/loaders/FontLoader.js';
-import { TextGeometry } from 'three/addons/geometries/TextGeometry.js';
 import plano from './city-center.json';
-// Helvetiker de los ejemplos de three.js (MgOpen, licencia libre en fuentes/LICENSE).
-import helvetiker from './fuentes/helvetiker_bold.typeface.json';
+import { letrasEnRelieve } from './letras';
+import { armarHotel } from './hotel';
+import { armarMuro, profundidadAuras } from './muros';
 
 // La maqueta del City Center Rosario: bloques grises a escala real armados con el plano
 // (city-center.json, calcado del satélite; tools/plano/dibujar.py lo dibuja). Sirve para caminarlo y
@@ -73,19 +72,6 @@ function plana(forma: THREE.Shape, y: number, material: THREE.Material): THREE.M
   return malla;
 }
 
-/** Un texto en relieve de `alto` metros, `relieve` de espesor y a lo sumo `ancho` de largo, centrado,
- * de cara a +Z con el fondo en z = 0. */
-function letrasEnRelieve(texto: string, alto: number, relieve: number, ancho: number): THREE.BufferGeometry {
-  const geo = new TextGeometry(texto, { font: new Font(helvetiker as never), size: alto, depth: relieve, curveSegments: 4 });
-  geo.computeBoundingBox();
-  const caja = geo.boundingBox!;
-  geo.translate(-(caja.max.x + caja.min.x) / 2, -(caja.max.y + caja.min.y) / 2, 0);
-  const largo = caja.max.x - caja.min.x;
-  if (largo > ancho) geo.scale(ancho / largo, ancho / largo, 1);
-  geo.computeVertexNormals();
-  return geo;
-}
-
 function dentro(p: THREE.Vector2, poligono: THREE.Vector2[]): boolean {
   let adentro = false;
   for (let i = 0, j = poligono.length - 1; i < poligono.length; j = i++) {
@@ -116,9 +102,17 @@ export class CityCenter {
   readonly lamparas: THREE.Vector3[] = [];
   /** Contra lo que pegan los tiros. */
   readonly solidos: THREE.Object3D[] = [];
+  /** Lo transparente, que no va en la pasada de normales del contorno. */
+  readonly transparentes: THREE.Object3D[] = [];
+  /** Lo que solo va en la pasada de normales (la silueta de las lámparas de los muros, para el contorno). */
+  readonly soloNormales: THREE.Object3D[] = [];
+  private readonly animaciones: ((t: number, jugador?: THREE.Vector3) => void)[] = [];
   /** Dónde arranca el jugador y hacia dónde mira la cámara. */
   readonly inicio: { x: number; z: number; yaw: number };
   readonly niebla = { cerca: 45, lejos: 170 };
+  /** De dónde viene la luna: detrás del casino visto desde la entrada (al este-sureste), a 25° del
+   * horizonte, para que se vea sobre su techo. */
+  readonly luna = new THREE.Vector3(0.61, 0, 0.79).normalize().multiplyScalar(Math.cos(THREE.MathUtils.degToRad(25))).setY(Math.sin(THREE.MathUtils.degToRad(25)));
   private readonly paredes: THREE.Vector2[][] = [];
   private readonly postes: { p: THREE.Vector2; r: number }[] = [];
   private readonly zona: THREE.Vector2[];
@@ -149,7 +143,7 @@ export class CityCenter {
     }
 
     const colores: Record<string, number> = {
-      hotel: 0xc9c9d2, base_hotel: 0xe4e0e8, deck: 0xa9a59c, marquesina: 0xeeeef2, casino: 0x96969f, techo_casino: 0xbdbdc8,
+      hotel: 0xc9c9d2, deck: 0xa9a59c, marquesina: 0xeeeef2, casino: 0x96969f, techo_casino: 0xbdbdc8,
     };
     const altos = new Map<string, number>();
     for (const e of plano.edificios as Edificio[]) altos.set(e.id, e.alto);
@@ -160,6 +154,13 @@ export class CityCenter {
         this.marquesina(puntos, e.alto, material);
         continue;
       }
+      if (e.id === 'hotel') {
+        const hotel = armarHotel(puntos);
+        this.grupo.add(hotel.grupo);
+        this.solidos.push(...hotel.solidos);
+        this.paredes.push(hotel.pared);
+        continue;
+      }
       const desde = e.sobre ? altos.get(e.sobre)! : 0;
       const malla = bloque(puntos, desde, e.alto - desde, material);
       this.grupo.add(malla);
@@ -167,24 +168,18 @@ export class CityCenter {
       if (!e.sobre) this.paredes.push(puntos);
     }
 
-    // Los muros con luces rosas: una franja de puntos que brillan sobre la fachada, a la altura del muro.
-    const rosa = new THREE.MeshStandardMaterial({ color: 0xff7ad9, emissive: 0xff4fc8, emissiveIntensity: 3 });
-    const punto = new THREE.SphereGeometry(0.18, 8, 6);
-    for (const muro of plano.muros_luces) {
-      const linea = muro.linea_px.map(m);
-      for (let i = 1; i < linea.length; i++) {
-        const a = linea[i - 1];
-        const b = linea[i];
-        const largo = a.distanceTo(b);
-        const normal = new THREE.Vector2(b.y - a.y, a.x - b.x).normalize().multiplyScalar(-0.3);
-        for (let d = 1; d < largo; d += 1.6) {
-          const p = a.clone().lerp(b, d / largo).add(normal);
-          const luz = new THREE.Mesh(punto, rosa);
-          luz.position.set(p.x, 0.6 + ((d * 7.31) % 1) * 4.5, p.y);
-          this.grupo.add(luz);
-        }
-      }
-    }
+    // Los muros blancos con luces rosas (la base del hotel y el frente del casino).
+    plano.muros_luces.forEach((mu, k) => {
+      const muro = armarMuro({
+        linea: mu.linea_px.map(m), adentro: m(mu.adentro_px), altos: mu.altos, fondo: mu.fondo, sesgo: mu.sesgo, semilla: 501 + k,
+      });
+      this.grupo.add(muro.grupo);
+      this.solidos.push(...muro.solidos);
+      if (muro.pared) this.paredes.push(muro.pared);
+      this.transparentes.push(...muro.transparentes);
+      this.soloNormales.push(...muro.soloNormales);
+      this.animaciones.push(muro.animar);
+    });
 
     // Palmeras: tronco y una copa de bloque; el modelo de verdad viene después.
     const tronco = new THREE.MeshStandardMaterial({ color: 0x6b5a45, roughness: 1 });
@@ -198,7 +193,9 @@ export class CityCenter {
       const c = new THREE.Mesh(copaGeo, hojas);
       c.position.set(p.x, PALMERA_ALTO, p.y);
       c.rotation.x = Math.PI; // abierta hacia abajo, como cuelgan las hojas
-      t.castShadow = c.castShadow = true;
+      // Sin la sombra de la copa: el cono proyectaba un triángulo negro sobre los muros. Vuelve con
+      // las palmeras de verdad (hojas).
+      t.castShadow = true;
       this.grupo.add(t, c);
       this.solidos.push(t);
       this.postes.push({ p, r: 0.35 });
@@ -333,6 +330,16 @@ export class CityCenter {
       barra(new THREE.Vector3(x, 0, z), new THREE.Vector3(x, arriba, z), 0.38);
       this.postes.push({ p: new THREE.Vector2(x, z), r: 0.38 });
     }
+  }
+
+  /** La profundidad de la escena, para que las aureolas de las luces se tapen con lo que tienen delante. */
+  usarProfundidad(textura: THREE.Texture, camara: THREE.PerspectiveCamera): void {
+    profundidadAuras(textura, camara);
+  }
+
+  /** Cada cuadro, con el tiempo en segundos y dónde está el jugador (las luces de los muros y su reflejo). */
+  actualizar(t: number, jugador: THREE.Vector3): void {
+    for (const animar of this.animaciones) animar(t, jugador);
   }
 
   /** Si el jugador puede pararse en (x, z): dentro de la zona y fuera de edificios, palmeras y postes. */

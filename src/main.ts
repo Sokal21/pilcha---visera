@@ -71,8 +71,6 @@ scene.fog = new THREE.Fog(0x0b1222, 22, 70);
 const LUNA = { luz: 1.3, ambiente: 1.5 };
 const ambiente = new THREE.HemisphereLight(0x95a8d8, 0x2c2c38, LUNA.ambiente);
 scene.add(ambiente);
-const luna = new Luna(new THREE.Vector3(-0.45, 0.42, -0.79));
-scene.add(luna.grupo);
 const sol = new THREE.DirectionalLight(0xb8c8ff, LUNA.luz); // la luz de la luna
 sol.castShadow = true;
 sol.shadow.mapSize.set(2048, 2048);
@@ -89,6 +87,10 @@ if (ciudad) {
   poligono.sumarSolidos(ciudad.solidos);
   Object.assign(scene.fog!, { near: ciudad.niebla.cerca, far: ciudad.niebla.lejos });
 }
+// En el polígono, baja sobre el fondo (se ve mirando a los blancos); en el City Center, detrás del
+// casino (se ve sobre él desde la entrada).
+const luna = new Luna(ciudad?.luna ?? new THREE.Vector3(-0.45, 0.42, -0.79));
+scene.add(luna.grupo);
 const fogonazo = new Fogonazo();
 scene.add(fogonazo.grupo);
 const conos = new Conos(ciudad?.lamparas ?? poligono.lamparas);
@@ -115,6 +117,7 @@ const normales = new THREE.WebGLRenderTarget(1, 1, { depthTexture: new THREE.Dep
 const pintaNormales = new THREE.MeshNormalMaterial();
 sucio.uniforms.tNormal.value = normales.texture;
 sucio.uniforms.tDepth.value = normales.depthTexture;
+ciudad?.usarProfundidad(normales.depthTexture!, camera);
 // El desenfoque de movimiento va antes de la tinta y el granulado (que no se barren).
 const movimiento = new Movimiento(normales.depthTexture!);
 movimiento.cantidad = 0.5;
@@ -142,9 +145,11 @@ function pintarNormales(): void {
   // Las sombras no hacen falta para pintar normales: sin esto cada cuadro volvía a dibujar los mapas
   // de sombra de la luna y las farolas dos veces.
   renderer.shadowMap.autoUpdate = false;
-  const transparentes = [fogonazo.grupo, conos.grupo, luna.grupo];
+  const transparentes = [fogonazo.grupo, conos.grupo, luna.grupo, ...(ciudad?.transparentes ?? [])];
   const antes = transparentes.map((o) => o.visible);
   for (const o of transparentes) o.visible = false;
+  const soloNormales = ciudad?.soloNormales ?? [];
+  for (const o of soloNormales) o.visible = true;
   const fondo = scene.background;
   scene.background = null;
   scene.overrideMaterial = pintaNormales;
@@ -155,6 +160,7 @@ function pintarNormales(): void {
   renderer.shadowMap.autoUpdate = true;
   scene.background = fondo;
   transparentes.forEach((o, i) => (o.visible = antes[i]));
+  for (const o of soloNormales) o.visible = false;
 }
 
 // Tonos: los materiales pasan a sombreado de dibujo (la luz en franjas planas) o vuelven al normal.
@@ -701,6 +707,7 @@ renderer.setAnimationLoop((t) => {
   fogonazo.actualizar(dt);
   sucio.uniforms.tiempo.value += dt;
   conos.actualizar(sucio.uniforms.tiempo.value);
+  ciudad?.actualizar(sucio.uniforms.tiempo.value, jugador.position);
   pintarNormales();
   movimiento.antes(camera, giroDelMouse, foco, distancia, dt, renderer.getDrawingBufferSize(tamañoPantalla));
   composer.render();

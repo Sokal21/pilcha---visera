@@ -7,15 +7,14 @@
   "zona_jugable_px": [[40, 40], [430, 40], [430, 930], [40, 930]],
   "edificios": [
     { "id": "hotel", "nombre": "Pullman (hotel)", "alto": 30, "poligono_px": [[352, 98], [742, 126], [742, 198], [352, 204]] },
-    { "id": "base_hotel", "nombre": "Base del hotel, muro inclinado con luces rosas", "alto": 7, "inclinado": true, "poligono_px": [[300, 100], [352, 98], [352, 300], [305, 300]] },
     { "id": "deck", "nombre": "Bloque central (deck de la pileta)", "alto": 7, "poligono_px": [[345, 204], [742, 198], [745, 560], [560, 590], [405, 585], [405, 325], [345, 325]], "nota": "La fachada de la entrada queda al fondo de la marquesina, que sobresale sobre la bajada de autos" },
     { "id": "marquesina", "nombre": "Marquesina de la entrada", "alto": 6, "techo": true, "poligono_px": [[335, 330], [405, 330], [405, 510], [335, 510]] },
     { "id": "casino", "nombre": "Casino", "alto": 12, "poligono_px": [[395, 605], [775, 600], [785, 1080], [290, 860], [300, 790], [360, 690]] },
     { "id": "techo_casino", "nombre": "Techo del casino (octógono, más alto)", "alto": 20, "sobre": "casino", "poligono_px": [[455, 615], [700, 615], [712, 860], [655, 940], [500, 940], [405, 800], [420, 700]] }
   ],
   "muros_luces": [
-    { "id": "luces_hotel", "nota": "Muro blanco inclinado con luces rosas, frente oeste de la base del hotel", "linea_px": [[302, 100], [305, 300]] },
-    { "id": "luces_casino", "nota": "Frente escalonado del casino hacia el oeste y suroeste", "linea_px": [[360, 690], [300, 790], [290, 860], [785, 1080]] }
+    { "id": "luces_hotel", "nombre": "Base del hotel", "nota": "Muro blanco vertical con luces rosas frente al oeste de la base del hotel; el borde de arriba sube hacia la entrada y las luces se amontonan de ese lado. Hasta el hotel.", "linea_px": [[302, 100], [305, 300]], "adentro_px": [400, 200], "altos": [4, 8], "fondo": 10.4, "sesgo": 2.2 },
+    { "id": "luces_casino", "nombre": "Frente del casino", "nota": "Luces rosas sobre el frente escalonado del casino, más tupidas cerca de la entrada", "linea_px": [[360, 690], [300, 790], [290, 860], [785, 1080]], "adentro_px": [550, 800], "altos": [6, 6, 5, 5], "fondo": 0, "sesgo": 0.45 }
   ],
   "calles": [
     { "id": "oeste", "nombre": "Calle del oeste (doble mano)", "ancho": 9, "eje_px": [[250, 25], [180, 35], [110, 55], [78, 110], [80, 250], [100, 380], [125, 500], [150, 600], [175, 700], [195, 800], [210, 900], [215, 1000]] },

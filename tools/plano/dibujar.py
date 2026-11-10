@@ -16,7 +16,7 @@ RAIZ = Path(__file__).resolve().parents[2]
 PLANO = json.loads((RAIZ / 'src/escenario/city-center.json').read_text())
 SATELITE = RAIZ / 'references/city-center/satelite.png'
 PX_POR_METRO = 4
-ROTULOS = {'hotel': 'Pullman', 'base_hotel': 'Base', 'deck': 'Bloque central', 'marquesina': 'Marq.', 'casino': 'Casino', 'techo_casino': 'Techo del casino'}
+ROTULOS = {'hotel': 'Pullman', 'deck': 'Bloque central', 'marquesina': 'Marq.', 'casino': 'Casino', 'techo_casino': 'Techo del casino'}
 
 COLORES = {
     'verde': (88, 128, 72), 'calle': (78, 80, 88), 'zona': (255, 220, 60),
