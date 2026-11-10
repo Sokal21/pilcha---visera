@@ -148,9 +148,9 @@ function caraCiega(ancho: number) {
   return texturas(l);
 }
 
-/** La planta baja: vidrio entre parantes, con la luz cálida de adentro. */
-function caraVidriera(ancho: number) {
-  const l = lienzos(ancho, PLANTA_BAJA);
+/** Una vidriera de `alto` metros: vidrio entre parantes, con la luz cálida de adentro. */
+export function caraVidriera(ancho: number, alto = PLANTA_BAJA) {
+  const l = lienzos(ancho, alto);
   const { color: g, luz } = l;
   g.fillStyle = '#3a4350';
   g.fillRect(0, 0, g.canvas.width, g.canvas.height);
@@ -159,13 +159,13 @@ function caraVidriera(ancho: number) {
   g.fillStyle = '#9a9890';
   luz.fillStyle = '#000';
   for (let x = 0; x <= ancho; x += 2.2) {
-    rect(g, l, x - 0.07, 0, 0.14, PLANTA_BAJA);
-    rect(luz, l, x - 0.07, 0, 0.14, PLANTA_BAJA);
+    rect(g, l, x - 0.07, 0, 0.14, alto);
+    rect(luz, l, x - 0.07, 0, 0.14, alto);
   }
   rect(g, l, 0, 3.6, ancho, 0.12);
   rect(luz, l, 0, 3.6, ancho, 0.12);
-  rect(g, l, 0, PLANTA_BAJA - 0.5, ancho, 0.5);
-  rect(luz, l, 0, PLANTA_BAJA - 0.5, ancho, 0.5);
+  rect(g, l, 0, alto - 0.5, ancho, 0.5);
+  rect(luz, l, 0, alto - 0.5, ancho, 0.5);
   return texturas(l);
 }
 

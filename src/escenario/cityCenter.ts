@@ -2,7 +2,8 @@ import * as THREE from 'three';
 import plano from './city-center.json';
 import { letrasEnRelieve } from './letras';
 import { armarHotel } from './hotel';
-import { armarMuro, profundidadAuras } from './muros';
+import { armarMuro, profundidadAuras, texturaPlacas } from './muros';
+import { armarEntrada } from './entrada';
 
 // La maqueta del City Center Rosario: bloques grises a escala real armados con el plano
 // (city-center.json, calcado del satélite; tools/plano/dibujar.py lo dibuja). Sirve para caminarlo y
@@ -116,6 +117,7 @@ export class CityCenter {
   private readonly paredes: THREE.Vector2[][] = [];
   private readonly postes: { p: THREE.Vector2; r: number }[] = [];
   private readonly zona: THREE.Vector2[];
+  private readonly entrada: ReturnType<typeof armarEntrada>;
 
   constructor() {
     const mat = (color: number) => new THREE.MeshStandardMaterial({ color, roughness: 0.95 });
@@ -142,6 +144,7 @@ export class CityCenter {
       this.grupo.add(cinta(c.eje_px.map(m), c.ancho, !!c.cerrada, 0.04, asfalto));
     }
 
+    const placas = texturaPlacas(true);
     const colores: Record<string, number> = {
       hotel: 0xc9c9d2, deck: 0xa9a59c, marquesina: 0xeeeef2, casino: 0x96969f, techo_casino: 0xbdbdc8,
     };
@@ -149,7 +152,9 @@ export class CityCenter {
     for (const e of plano.edificios as Edificio[]) altos.set(e.id, e.alto);
     for (const e of plano.edificios as Edificio[]) {
       const puntos = e.poligono_px.map(m);
+      // Con las placas de piedra de los muros (las coordenadas de textura de la extrusión van en metros).
       const material = mat(colores[e.id] ?? 0xaaaaaa);
+      if (!e.techo) material.map = placas;
       if (e.techo) {
         this.marquesina(puntos, e.alto, material);
         continue;
@@ -167,6 +172,17 @@ export class CityCenter {
       this.solidos.push(malla);
       if (!e.sobre) this.paredes.push(puntos);
     }
+
+    // La entrada: la vidriera bajo la marquesina y el hall con sus puertas.
+    const en = plano.entrada;
+    this.entrada = armarEntrada({
+      x: m([en.x_px, 0]).x, desde: m([0, en.desde_px]).y, hasta: m([0, en.hasta_px]).y, alto: en.alto,
+      hall: { desde: m([0, en.hall_px.desde]).y, hasta: m([0, en.hall_px.hasta]).y, fondo: (en.hall_px.fondo - en.x_px) * ESC },
+    });
+    this.grupo.add(this.entrada.grupo);
+    this.solidos.push(...this.entrada.solidos);
+    this.transparentes.push(...this.entrada.transparentes);
+    this.paredes.push(...this.entrada.paredes);
 
     // Los muros blancos con luces rosas (la base del hotel y el frente del casino).
     plano.muros_luces.forEach((mu, k) => {
@@ -340,12 +356,14 @@ export class CityCenter {
   /** Cada cuadro, con el tiempo en segundos y dónde está el jugador (las luces de los muros y su reflejo). */
   actualizar(t: number, jugador: THREE.Vector3): void {
     for (const animar of this.animaciones) animar(t, jugador);
+    this.entrada.actualizar(t, jugador);
   }
 
   /** Si el jugador puede pararse en (x, z): dentro de la zona y fuera de edificios, palmeras y postes. */
   libre(x: number, z: number): boolean {
     const p = new THREE.Vector2(x, z);
     if (!dentro(p, this.zona) || distanciaBorde(p, this.zona) < RADIO_JUGADOR) return false;
+    if (this.entrada.bloquea(x, z, RADIO_JUGADOR)) return false;
     for (const pared of this.paredes) {
       if (dentro(p, pared) || distanciaBorde(p, pared) < RADIO_JUGADOR) return false;
     }

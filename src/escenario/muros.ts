@@ -19,11 +19,13 @@ const AURA = { tamaño: 7.5, fuerza: 0.85 };
 // Sin pasar de 1: más brillantes, el tono mapeado los lavaba hacia el blanco.
 const COLORES = { rosa: new THREE.Color(1, 0.08, 0.58), purpura: new THREE.Color(0.55, 0.04, 1), brillo: 1 };
 const RITMO = { desde: 6, hasta: 18 };
-// Las luces no iluminan (son cientos): una sola luz de verdad por muro va pegada al jugador, del lado
-// del muro, con el color y la fuerza de las luces del punto del muro más cerca de él, y se apaga a
-// medida que se aleja (a `lejos` metros del muro ya no está). Puesta contra el muro le dejaba un foco
-// encima que no se sabía de dónde salía.
-const REFLEJO = { alcance: 3, fuerza: 0.7, distancia: 4, alLado: 0.7, alto: 1.3, lejos: 6 };
+// Las luces no iluminan (son cientos): una sola luz de verdad por muro, un reflector apoyado en el muro
+// en el punto más cerca del jugador que lo apunta a él, con el color y la fuerza de las luces de ahí.
+// Ilumina al personaje y el piso delante, nunca la pared (queda detrás del reflector): una luz que
+// rodeaba al jugador le dejaba un foco a la pared cuando él se le acercaba. Se apaga a medida que el
+// jugador se aleja (a `lejos` metros ya no está); la fuerza crece con la distancia para que a él le
+// llegue lo mismo.
+const REFLEJO = { alcance: 3, fuerza: 0.7, distancia: 9, afuera: 0.15, alto: 1.4, pecho: 1.1, lejos: 6, cerca: 0.7 };
 // Las luces son discos: cilindros chatos con la cara hacia afuera del muro, medio metidos en él, cada
 // uno dentro de un aro del material del muro que sobresale más que el disco (la luz queda contenida).
 const DISCO = { espesor: 0.07 };
@@ -106,8 +108,9 @@ function azar(semilla: number): () => number {
   };
 }
 
-/** Placas de piedra con juntas, para repetir cada PLACA. */
-function texturaPlacas(): THREE.CanvasTexture {
+/** Placas de piedra con juntas, para repetir cada PLACA. Con `porMetro`, ya escalada para
+ * coordenadas de textura en metros (las de los bloques extruidos). */
+export function texturaPlacas(porMetro = false): THREE.CanvasTexture {
   const w = 192;
   const h = 96;
   const c = document.createElement('canvas');
@@ -123,6 +126,7 @@ function texturaPlacas(): THREE.CanvasTexture {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.anisotropy = 8;
+  if (porMetro) t.repeat.set(1 / PLACA.ancho, 1 / PLACA.alto);
   return t;
 }
 
@@ -255,8 +259,9 @@ export function armarMuro(m: Muro): {
     vel: (Math.PI * 2) / THREE.MathUtils.lerp(RITMO.desde, RITMO.hasta, r()), fase: r() * Math.PI * 2,
   }));
   const tinte = new THREE.Color();
-  const reflejo = new THREE.PointLight(COLORES.rosa, 0, REFLEJO.distancia, 2);
-  grupo.add(reflejo);
+  const reflejo = new THREE.SpotLight(COLORES.rosa, 0, REFLEJO.distancia, 0.7, 1, 2);
+  grupo.add(reflejo, reflejo.target);
+  let normalCerca = new THREE.Vector2(1, 0);
   const cerca = new THREE.Vector3();
   const mezcla = new THREE.Color();
   const animar = (t: number, jugador?: THREE.Vector3) => {
@@ -272,6 +277,7 @@ export function armarMuro(m: Muro): {
         if (d < mejor) {
           mejor = d;
           cerca.set(q.x, 0, q.y);
+          normalCerca = ns[i - 1].clone().lerp(ns[i], u).normalize();
         }
       }
     }
@@ -296,13 +302,12 @@ export function armarMuro(m: Muro): {
     auras.instanceColor = luces.instanceColor;
     if (peso > 0 && jugador && mejor < REFLEJO.lejos) {
       reflejo.color.setRGB(mezcla.r / peso, mezcla.g / peso, mezcla.b / peso);
-      // Al lado del jugador, hacia el muro.
-      const hacia = new THREE.Vector3(cerca.x - jugador.x, 0, cerca.z - jugador.z);
-      const largo = hacia.length();
-      if (largo > 1e-3) hacia.multiplyScalar(Math.min(REFLEJO.alLado, largo * 0.5) / largo);
-      reflejo.position.set(jugador.x + hacia.x, jugador.y + REFLEJO.alto, jugador.z + hacia.z);
+      // En el muro (apenas por fuera), apuntando al pecho del jugador.
+      reflejo.position.set(cerca.x - normalCerca.x * REFLEJO.afuera, jugador.y + REFLEJO.alto, cerca.z - normalCerca.y * REFLEJO.afuera);
+      reflejo.target.position.set(jugador.x, jugador.y + REFLEJO.pecho, jugador.z);
+      const hasta = Math.max(REFLEJO.cerca, reflejo.position.distanceTo(reflejo.target.position));
       const lejania = 1 - mejor / REFLEJO.lejos;
-      reflejo.intensity = REFLEJO.fuerza * Math.min(peso, 6) * lejania * lejania;
+      reflejo.intensity = REFLEJO.fuerza * Math.min(peso, 6) * (hasta * hasta) / (REFLEJO.cerca * REFLEJO.cerca) * lejania * lejania;
     } else {
       reflejo.intensity = 0;
     }

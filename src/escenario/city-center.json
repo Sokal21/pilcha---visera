@@ -4,14 +4,15 @@
   "escala_nota": "Metros por píxel, estimado: el hotel tiene ~100 px de ancho (~20 m, un hotel de pasillo central) y la calle del oeste ~45 px (~9 m, dos carriles con banquina). Se confirma caminando la maqueta.",
   "origen_px": [335, 420],
   "origen_nota": "El frente de la marquesina de la entrada.",
-  "zona_jugable_px": [[40, 40], [430, 40], [430, 930], [40, 930]],
+  "zona_jugable_px": [[40, 40], [455, 40], [455, 930], [40, 930]],
   "edificios": [
     { "id": "hotel", "nombre": "Pullman (hotel)", "alto": 30, "poligono_px": [[352, 98], [742, 126], [742, 198], [352, 204]] },
-    { "id": "deck", "nombre": "Bloque central (deck de la pileta)", "alto": 7, "poligono_px": [[345, 204], [742, 198], [745, 560], [560, 590], [405, 585], [405, 325], [345, 325]], "nota": "La fachada de la entrada queda al fondo de la marquesina, que sobresale sobre la bajada de autos" },
+    { "id": "deck", "nombre": "Bloque central (deck de la pileta)", "alto": 7, "poligono_px": [[345, 204], [742, 198], [745, 560], [560, 590], [405, 585], [405, 460], [445, 460], [445, 380], [405, 380], [405, 325], [345, 325]], "nota": "La fachada de la entrada queda al fondo de la marquesina, que sobresale sobre la bajada de autos; la muesca es el hall" },
     { "id": "marquesina", "nombre": "Marquesina de la entrada", "alto": 6, "techo": true, "poligono_px": [[335, 330], [405, 330], [405, 510], [335, 510]] },
     { "id": "casino", "nombre": "Casino", "alto": 12, "poligono_px": [[395, 605], [775, 600], [785, 1080], [290, 860], [300, 790], [360, 690]] },
     { "id": "techo_casino", "nombre": "Techo del casino (octógono, más alto)", "alto": 20, "sobre": "casino", "poligono_px": [[455, 615], [700, 615], [712, 860], [655, 940], [500, 940], [405, 800], [420, 700]] }
   ],
+  "entrada": { "nota": "La vidriera bajo la marquesina y el hall con puertas (src/escenario/entrada.ts)", "x_px": 405, "desde_px": 330, "hasta_px": 510, "alto": 7, "hall_px": { "desde": 380, "hasta": 460, "fondo": 445 } },
   "muros_luces": [
     { "id": "luces_hotel", "nombre": "Base del hotel", "nota": "Muro blanco vertical con luces rosas frente al oeste de la base del hotel; el borde de arriba sube hacia la entrada y las luces se amontonan de ese lado. Hasta el hotel.", "linea_px": [[302, 100], [305, 300]], "adentro_px": [400, 200], "altos": [4, 8], "fondo": 10.4, "sesgo": 2.2 },
     { "id": "luces_casino", "nombre": "Frente del casino", "nota": "Luces rosas sobre el frente escalonado del casino, más tupidas cerca de la entrada", "linea_px": [[360, 690], [300, 790], [290, 860], [785, 1080]], "adentro_px": [550, 800], "altos": [6, 6, 5, 5], "fondo": 0, "sesgo": 0.45 }
