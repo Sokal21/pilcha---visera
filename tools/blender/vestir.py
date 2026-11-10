@@ -63,6 +63,12 @@ SUELA_ALTURA = 0.003  # cuánto sobre lo más bajo del pie va la suela (más aba
 ZAPATILLA_LARGO = 1.08  # el largo de la zapatilla, en largos del pie
 PIE_APOYADO = 0.01    # hasta esta altura del tobillo sobre el del otro pie, el pie está en el piso
 PIE_PUNTA_MAX = 40.0  # grados: lo más que apunta hacia abajo un pie en el aire
+# Clips con vuelo (los dos pies en el aire, al correr): vienen del retarget sin --feet, con la altura
+# de la cadera de la captura. No se los baja al piso cada cuadro (en el vuelo el cuerpo bajaba hasta
+# apoyar un pie y las rodillas rebotaban): se los corre una sola vez, lo que deja el pie más bajo de
+# todo el clip en el piso, y solo los cuadros con un pie a menos de CONTACTO del piso se apoyan.
+CON_VUELO = {'corrida'}
+CONTACTO = 0.02
 DEDOS_PISO = 0.012    # la punta de los dedos que baja hasta esto sobre el piso empieza a quedar apoyada
 PIE_PLANO = 8.0       # grados: hasta esta inclinación (respecto del reposo) un pie apoyado se aplana del todo
 PIE_PLANO_TRANSICION = 12.0  # y de ahí hasta esto más, deja de aplanarse
@@ -194,9 +200,19 @@ def planted_feet(name: str, angle: float) -> None:
         d = (toes[side].bone.head_local - feet[side].bone.head_local).normalized()
         rest_pitch[side] = math.asin(max(-1, min(1, d.z)))
     rest_low = {side: min(feet[side].bone.head_local.z, toes[side].bone.head_local.z, toes[side].bone.tail_local.z) for side in feet}
+    # Con vuelo: cuánto está el pie más bajo sobre el piso en cada cuadro (como viene) y en todo el clip.
+    vuelo = name in CON_VUELO
+    alto_pies = {}
+    if vuelo:
+        for f in range(first, last + 1):
+            bpy.context.scene.frame_set(f)
+            alto_pies[f] = min(min(feet[s].head.z, toes[s].head.z, toes[s].tail.z) - rest_low[s] for s in feet)
+        piso_clip = min(alto_pies.values())
     poses = []
     for f in range(first, last + 1):
         bpy.context.scene.frame_set(f)
+        # Con vuelo, cuánto está apoyado este cuadro (1 en el piso, 0 en el aire).
+        apoyo = 1 - min(max((alto_pies[f] - piso_clip) / CONTACTO, 0), 1) if vuelo else 1
         for side, pb in feet.items():
             # Sobre el eje de costado del propio pie (-Y del rig llevado por el hueso): con el de la
             # dirección horizontal del pie, en el aire (punta al piso) el eje salía cualquiera y la
@@ -226,6 +242,7 @@ def planted_feet(name: str, angle: float) -> None:
             d = ((arm.matrix_world @ toes[side].head) - (arm.matrix_world @ pb.head)).normalized()
             off = abs(math.asin(max(-1, min(1, d.z))) - rest_pitch[side])
             planted *= 1 - min(max((off - math.radians(PIE_PLANO)) / math.radians(PIE_PLANO_TRANSICION), 0), 1)
+            planted *= apoyo  # en el vuelo ninguno está apoyado
             on_floor[side] = planted
             want = turn.slerp(flat, planted)
             pb.matrix = Matrix.Translation(head) @ (want.to_matrix() @ rest).to_4x4()
@@ -252,7 +269,10 @@ def planted_feet(name: str, angle: float) -> None:
         # A la altura del piso por el pie apoyado (no por el que está en el aire).
         base = max(on_floor, key=on_floor.get)
         low = min(feet[base].head.z, toes[base].head.z, toes[base].tail.z)
-        hip.matrix = Matrix.Translation((0, 0, rest_low[base] - low)) @ hip.matrix
+        bajar = rest_low[base] - low
+        if vuelo:  # en el aire, solo el corrimiento de todo el clip
+            bajar = bajar * apoyo - piso_clip * (1 - apoyo)
+        hip.matrix = Matrix.Translation((0, 0, bajar)) @ hip.matrix
         bpy.context.view_layer.update()
         # Y si el otro (apoyando el talón con la punta arriba) se mete en el piso, sube lo justo.
         sunk = max(rest_low[side] - min(feet[side].head.z, toes[side].head.z) for side in feet)

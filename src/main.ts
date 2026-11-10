@@ -11,11 +11,15 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AJUSTES, ajustar, pasoSucio, valor } from './sucio';
 import { Conos } from './conos';
 import { Faldon } from './faldon';
+import { Movimiento } from './movimiento';
+import { Luna } from './luna';
+import { CityCenter } from './escenario/cityCenter';
 import { Pose, posesHuesos } from './huesos';
 
-// Un polígono de tiro para probar al protagonista: camina con WASD, con Shift saca la pistola y
-// apunta (la cámara se acerca a su espalda y aparece la mira), con click dispara, con Shift otra
-// vez la guarda. El panel de la derecha sigue sirviendo para vestirlo.
+// Un polígono de tiro para probar al protagonista: camina con WASD y corre con Shift; con espacio
+// (o manteniendo el click derecho) saca la pistola y apunta (la cámara se acerca a su espalda y
+// aparece la mira; apuntando no corre), con click dispara, con espacio otra vez (o al soltar el
+// click derecho) la guarda. El panel de la derecha sigue sirviendo para vestirlo.
 
 const ALTO = 1.75; // metros: el modelo mide una unidad
 // Cuánto avanza un pie por paso en cada caminata (medido en el clip, en altos del modelo) y a qué
@@ -23,6 +27,9 @@ const ALTO = 1.75; // metros: el modelo mide una unidad
 const CAMINATAS = {
   caminata: { paso: 0.53, ritmo: 0.8 },
   pistola_caminata: { paso: 0.52, ritmo: 0.6 },
+  // La velocidad del pie apoyado da 0,69; con la misma corrección que la caminata (0,48 medido, 0,53
+  // usado) queda en 0,72.
+  corrida: { paso: 0.72, ritmo: 0.9 },
 };
 // `pistola_guardar` va de apuntar a guardarla (24 cuadros por segundo). Se usa de 24 a 112: antes
 // apunta quieto, después deja caer el brazo. En el 82 la pistola entra en la funda; al revés, sale.
@@ -43,29 +50,48 @@ const CAMARA = {
   apuntando: { alto: 1.6, distancia: 1.5, hombro: 0.5, fov: 42 },
 };
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// Sin antialias del lienzo: todo se dibuja en las texturas del composer y el lienzo solo recibe la
+// imagen final, así que su multimuestreo se pagaba sin verse.
+const renderer = new THREE.WebGLRenderer({ antialias: false });
+// Resolución de dibujo: en pantallas Retina, 2 dibuja cuatro veces los píxeles de 1 en cada pasada
+// (escena, normales, resplandor, desenfoque, tinta); 1,5 casi no se nota y cuesta la mitad.
+const RESOLUCION = { valor: Math.min(devicePixelRatio, 1.5) };
+renderer.setPixelRatio(RESOLUCION.valor);
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
 document.body.prepend(renderer.domElement);
 
 const scene = new THREE.Scene();
 // De noche: cielo y niebla azul oscuro, una luna tenue; lo demás lo ponen las farolas y los tiros.
 scene.background = new THREE.Color(0x0b1222);
 scene.fog = new THREE.Fog(0x0b1222, 22, 70);
-scene.add(new THREE.HemisphereLight(0x8fa2d0, 0x2a2a34, 1.0));
-const sol = new THREE.DirectionalLight(0xb4c4ff, 0.9); // la luna
+// La luna, baja sobre el fondo del polígono (se ve mirando hacia los blancos): de ahí viene su luz y
+// salen las sombras largas. El ambiente, azulado, levanta un poco lo que las farolas no alcanzan.
+const LUNA = { luz: 1.3, ambiente: 1.5 };
+const ambiente = new THREE.HemisphereLight(0x95a8d8, 0x2c2c38, LUNA.ambiente);
+scene.add(ambiente);
+const luna = new Luna(new THREE.Vector3(-0.45, 0.42, -0.79));
+scene.add(luna.grupo);
+const sol = new THREE.DirectionalLight(0xb8c8ff, LUNA.luz); // la luz de la luna
 sol.castShadow = true;
 sol.shadow.mapSize.set(2048, 2048);
 Object.assign(sol.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15, near: 1, far: 60 });
 scene.add(sol, sol.target);
 
-const poligono = new Poligono();
+// El lugar: el polígono de tiro o la maqueta del City Center (?lugar=city-center). Los tiros son los
+// mismos en los dos; el City Center suma sus edificios para que les peguen.
+const ciudad = new URLSearchParams(location.search).get('lugar') === 'city-center' ? new CityCenter() : null;
+const poligono = new Poligono(!ciudad);
 scene.add(poligono.grupo);
+if (ciudad) {
+  scene.add(ciudad.grupo);
+  poligono.sumarSolidos(ciudad.solidos);
+  Object.assign(scene.fog!, { near: ciudad.niebla.cerca, far: ciudad.niebla.lejos });
+}
 const fogonazo = new Fogonazo();
 scene.add(fogonazo.grupo);
-const conos = new Conos(poligono.lamparas);
+const conos = new Conos(ciudad?.lamparas ?? poligono.lamparas);
 scene.add(conos.grupo);
 const FAROLAS = { conos: 0.6, polvo: 0.1 };
 conos.intensidad = FAROLAS.conos;
@@ -89,6 +115,11 @@ const normales = new THREE.WebGLRenderTarget(1, 1, { depthTexture: new THREE.Dep
 const pintaNormales = new THREE.MeshNormalMaterial();
 sucio.uniforms.tNormal.value = normales.texture;
 sucio.uniforms.tDepth.value = normales.depthTexture;
+// El desenfoque de movimiento va antes de la tinta y el granulado (que no se barren).
+const movimiento = new Movimiento(normales.depthTexture!);
+movimiento.cantidad = 0.5;
+const tamañoPantalla = new THREE.Vector2();
+composer.insertPass(movimiento.paso, composer.passes.indexOf(sucio));
 sucio.uniforms.camaraCerca.value = camera.near;
 sucio.uniforms.camaraLejos.value = camera.far;
 
@@ -99,9 +130,19 @@ function medirSucio(): void {
 }
 medirSucio();
 
+function ponerResolucion(v: number): void {
+  RESOLUCION.valor = v;
+  renderer.setPixelRatio(v);
+  composer.setPixelRatio(v);
+  medirSucio();
+}
+
 function pintarNormales(): void {
-  if (valor('contorno') <= 0) return;
-  const transparentes = [fogonazo.grupo, conos.grupo];
+  if (valor('contorno') <= 0 && movimiento.cantidad <= 0) return;
+  // Las sombras no hacen falta para pintar normales: sin esto cada cuadro volvía a dibujar los mapas
+  // de sombra de la luna y las farolas dos veces.
+  renderer.shadowMap.autoUpdate = false;
+  const transparentes = [fogonazo.grupo, conos.grupo, luna.grupo];
   const antes = transparentes.map((o) => o.visible);
   for (const o of transparentes) o.visible = false;
   const fondo = scene.background;
@@ -111,6 +152,7 @@ function pintarNormales(): void {
   renderer.render(scene, camera);
   renderer.setRenderTarget(null);
   scene.overrideMaterial = null;
+  renderer.shadowMap.autoUpdate = true;
   scene.background = fondo;
   transparentes.forEach((o, i) => (o.visible = antes[i]));
 }
@@ -238,7 +280,12 @@ function titulo(texto: string): HTMLHeadingElement {
 }
 
 function pintarPanel(): void {
-  panel.replaceChildren(titulo('Polígono'));
+  panel.replaceChildren(titulo('Lugar'));
+  const fila = document.createElement('div');
+  fila.className = 'tonos';
+  const ir = (lugar: string | null) => { location.search = lugar ? `?lugar=${lugar}` : ''; };
+  fila.append(boton('Polígono', !ciudad, () => ir(null)), boton('City Center', !!ciudad, () => ir('city-center')));
+  panel.append(fila);
   panel.append(boton('Reponer latas y blancos', false, () => { poligono.reponer(); puntos = 0; tiros = 0; pintarHud(); }));
   const deslizador = (nombre: string, min: number, max: number, paso: number, actual: number, cambiar: (v: number) => void): void => {
     const fila = document.createElement('label');
@@ -268,6 +315,12 @@ function pintarPanel(): void {
       deslizador(a.nombre, a.min, a.max, a.paso, a.valor, (v) => ajustar(sucio, a.id, v));
     }
   }
+  panel.append(titulo('Cámara'));
+  deslizador('Desenfoque de movimiento', 0, 1.5, 0.05, movimiento.cantidad, (v) => { movimiento.cantidad = v; });
+  deslizador('Resolución', 0.5, 2, 0.25, RESOLUCION.valor, ponerResolucion);
+  panel.append(titulo('Luna'));
+  deslizador('Luz de luna', 0, 3, 0.05, LUNA.luz, (v) => { LUNA.luz = v; sol.intensity = v; });
+  deslizador('Ambiente', 0, 3, 0.05, LUNA.ambiente, (v) => { LUNA.ambiente = v; ambiente.intensity = v; });
   panel.append(titulo('Farolas'));
   deslizador('Conos de luz', 0, 2, 0.05, FAROLAS.conos, (v) => { FAROLAS.conos = v; conos.intensidad = v; });
   deslizador('Polvo', 0, 1.5, 0.05, FAROLAS.polvo, (v) => { FAROLAS.polvo = v; conos.polvo = v; });
@@ -314,14 +367,38 @@ function pintarHud(): void {
 const teclas = new Set<string>();
 let yaw = 0;
 let pitch = -0.08;
+if (ciudad) {
+  jugador.position.set(ciudad.inicio.x, 0, ciudad.inicio.z);
+  yaw = ciudad.inicio.yaw;
+  mirando = yaw + Math.PI;
+}
+
+/** Mueve al jugador sin meterse en paredes: si no puede derecho, se desliza por la pared. */
+function caminar(hacia: THREE.Vector3, distancia: number): void {
+  const p = jugador.position;
+  const x = p.x + hacia.x * distancia;
+  const z = p.z + hacia.z * distancia;
+  if (!ciudad || ciudad.libre(x, z)) p.set(x, p.y, z);
+  else if (ciudad.libre(x, p.z)) p.x = x;
+  else if (ciudad.libre(p.x, z)) p.z = z;
+}
 let bloqueado = false;
 let disparoPendiente = false;
+// Si quiere estar apuntando: el espacio lo alterna, el click derecho lo sostiene mientras se aprieta.
+// El ciclo saca o guarda la pistola cuando hace falta (también si se suelta a mitad de sacarla).
+let quiereApuntar = false;
 
 addEventListener('keydown', (e) => {
   teclas.add(e.code);
-  if ((e.code === 'ShiftLeft' || e.code === 'ShiftRight') && !e.repeat) alternarArma();
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (!e.repeat) quiereApuntar = !quiereApuntar;
+  }
 });
-addEventListener('keyup', (e) => teclas.delete(e.code));
+addEventListener('keyup', (e) => {
+  teclas.delete(e.code);
+  if (e.code === 'Space') e.preventDefault(); // si no, aprieta el botón del panel que quedó enfocado
+});
 addEventListener('blur', () => teclas.clear());
 
 renderer.domElement.addEventListener('mousedown', (e) => {
@@ -330,7 +407,12 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     return;
   }
   if (e.button === 0) disparoPendiente = true;
+  if (e.button === 2) quiereApuntar = true;
 });
+renderer.domElement.addEventListener('mouseup', (e) => {
+  if (e.button === 2 && bloqueado) quiereApuntar = false;
+});
+renderer.domElement.addEventListener('contextmenu', (e) => e.preventDefault());
 document.addEventListener('pointerlockchange', () => {
   bloqueado = document.pointerLockElement === renderer.domElement;
   document.body.classList.toggle('jugando', bloqueado);
@@ -344,6 +426,10 @@ document.addEventListener('mousemove', (e) => {
 
 function alternarArma(): void {
   if (!enfundar) return;
+  // Si la otra mitad acaba de terminar, el clip sigue siendo el actual (pasarA no lo vuelve a
+  // arrancar) y quedó en pausa en su último cuadro: sin esto se quedaba congelado guardándola.
+  enfundar.paused = false;
+  enfundar.enabled = true;
   if (estado === 'libre') {
     // Sacarla: el clip de guardarla, al revés.
     estado = 'sacando';
@@ -373,6 +459,7 @@ new GLTFLoader().load(`${import.meta.env.BASE_URL}models/protagonista.glb`, (glt
   });
   jugador.add(modelo);
   if (tonos) ponerTonos(tonos);
+  precalentar();
   const pistola = mallas.get('ropa_pistola');
   if (pistola) aplicarAgarre(pistola);
   jugador.updateMatrixWorld(true);
@@ -451,6 +538,7 @@ let enfriamiento = 0;
 let retroceso = 0;
 let mezclaCamara = 0; // 0 libre, 1 apuntando
 const boca = new THREE.Vector3();
+const giroDelMouse = new THREE.Quaternion();
 
 function disparar(): void {
   tiros++;
@@ -481,9 +569,48 @@ function disparar(): void {
   pitch = Math.min(0.7, pitch + 0.015);
 }
 
-const reloj = new THREE.Clock();
-renderer.setAnimationLoop(() => {
+/** Compila de entrada los shaders de todo lo que está escondido (el fogonazo, las chispas, la
+ * otra ropa): si no, se compilaban la primera vez que aparecían y ese cuadro se trababa (el primer tiro). */
+function precalentar(): void {
+  const escondidos: THREE.Object3D[] = [];
+  scene.traverse((o) => {
+    if (!o.visible) {
+      escondidos.push(o);
+      o.visible = true;
+    }
+  });
+  renderer.compile(scene, camera);
+  for (const o of escondidos) o.visible = false;
+}
+
+// Contador de cuadros: el promedio y el peor cuadro de cada medio segundo (las trabas se ven en el peor).
+const contador = document.getElementById('fps')!;
+let cuadrosContados = 0;
+let tiempoContado = 0;
+let peorCuadro = 0;
+let ultimoCuadro = performance.now();
+
+function contarCuadro(): void {
+  const ahora = performance.now();
+  const ms = ahora - ultimoCuadro;
+  ultimoCuadro = ahora;
+  cuadrosContados++;
+  tiempoContado += ms;
+  peorCuadro = Math.max(peorCuadro, ms);
+  if (tiempoContado < 500) return;
+  const fps = (cuadrosContados * 1000) / tiempoContado;
+  contador.textContent = `${fps.toFixed(0)} FPS · peor ${peorCuadro.toFixed(0)} ms`;
+  contador.classList.toggle('traba', peorCuadro > 50);
+  cuadrosContados = 0;
+  tiempoContado = 0;
+  peorCuadro = 0;
+}
+
+const reloj = new THREE.Timer();
+renderer.setAnimationLoop((t) => {
+  reloj.update(t);
   const dt = Math.min(reloj.getDelta(), 0.05);
+  contarCuadro();
 
   // Hacia dónde camina, respecto de la cámara.
   const adelante = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
@@ -495,12 +622,15 @@ renderer.setAnimationLoop(() => {
   if (teclas.has('KeyA')) quiere.sub(derecha);
   const mueve = quiere.lengthSq() > 0 && (estado === 'libre' || estado === 'apuntando');
   if (mueve) quiere.normalize();
+  if (quiereApuntar && estado === 'libre') alternarArma();
+  else if (!quiereApuntar && estado === 'apuntando') alternarArma();
 
   if (estado === 'libre') {
     if (mueve) {
-      jugador.position.addScaledVector(quiere, velocidad('caminata') * dt);
+      const paso = teclas.has('ShiftLeft') || teclas.has('ShiftRight') ? 'corrida' : 'caminata';
+      caminar(quiere, velocidad(paso) * dt);
       mirando = anguloHacia(mirando, Math.atan2(quiere.x, quiere.z), dt * 10);
-      pasarA(acciones.get('caminata'));
+      pasarA(acciones.get(paso), 0.2);
     } else {
       pasarA(acciones.get(reposo));
     }
@@ -508,7 +638,7 @@ renderer.setAnimationLoop(() => {
     // Apuntando mira siempre a donde mira la cámara; camina en cualquier dirección.
     mirando = anguloHacia(mirando, yaw + Math.PI, dt * 20);
     if (mueve) {
-      jugador.position.addScaledVector(quiere, velocidad('pistola_caminata') * dt);
+      caminar(quiere, velocidad('pistola_caminata') * dt);
       const caminata = acciones.get('pistola_caminata');
       const atras = quiere.dot(adelante) < -0.3;
       caminata?.setEffectiveTimeScale(CAMINATAS.pistola_caminata.ritmo * (atras ? -1 : 1));
@@ -559,16 +689,19 @@ renderer.setAnimationLoop(() => {
   camera.position.copy(foco).addScaledVector(mirada, -distancia);
   camera.position.y = Math.max(0.2, camera.position.y);
   camera.lookAt(foco.clone().addScaledVector(mirada, 10));
+  giroDelMouse.copy(camera.quaternion); // para el desenfoque: el giro sin el retroceso
   if (retroceso > 0) camera.rotateX(retroceso * 0.01);
 
   mira.classList.toggle('visible', estado === 'apuntando');
-  sol.position.copy(jugador.position).add(new THREE.Vector3(8, 15, 6));
+  sol.position.copy(jugador.position).addScaledVector(luna.direccion, 40);
   sol.target.position.copy(jugador.position);
+  luna.actualizar(camera);
 
   poligono.actualizar(dt);
   fogonazo.actualizar(dt);
   sucio.uniforms.tiempo.value += dt;
   conos.actualizar(sucio.uniforms.tiempo.value);
   pintarNormales();
+  movimiento.antes(camera, giroDelMouse, foco, distancia, dt, renderer.getDrawingBufferSize(tamañoPantalla));
   composer.render();
 });

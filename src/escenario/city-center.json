@@ -1,0 +1,47 @@
+{
+  "fuente": "Calcado de references/city-center/satelite.png (986x1210, norte arriba). Coordenadas en píxeles de esa imagen; el juego las pasa a metros con escala y origen: x hacia el este, z hacia el sur.",
+  "escala": 0.2,
+  "escala_nota": "Metros por píxel, estimado: el hotel tiene ~100 px de ancho (~20 m, un hotel de pasillo central) y la calle del oeste ~45 px (~9 m, dos carriles con banquina). Se confirma caminando la maqueta.",
+  "origen_px": [335, 420],
+  "origen_nota": "El frente de la marquesina de la entrada.",
+  "zona_jugable_px": [[40, 40], [430, 40], [430, 930], [40, 930]],
+  "edificios": [
+    { "id": "hotel", "nombre": "Pullman (hotel)", "alto": 30, "poligono_px": [[352, 98], [742, 126], [742, 198], [352, 204]] },
+    { "id": "base_hotel", "nombre": "Base del hotel, muro inclinado con luces rosas", "alto": 7, "inclinado": true, "poligono_px": [[300, 100], [352, 98], [352, 300], [305, 300]] },
+    { "id": "deck", "nombre": "Bloque central (deck de la pileta)", "alto": 7, "poligono_px": [[345, 204], [742, 198], [745, 560], [560, 590], [405, 585], [405, 325], [345, 325]], "nota": "La fachada de la entrada queda al fondo de la marquesina, que sobresale sobre la bajada de autos" },
+    { "id": "marquesina", "nombre": "Marquesina de la entrada", "alto": 6, "techo": true, "poligono_px": [[335, 330], [405, 330], [405, 510], [335, 510]] },
+    { "id": "casino", "nombre": "Casino", "alto": 12, "poligono_px": [[395, 605], [775, 600], [785, 1080], [290, 860], [300, 790], [360, 690]] },
+    { "id": "techo_casino", "nombre": "Techo del casino (octógono, más alto)", "alto": 20, "sobre": "casino", "poligono_px": [[455, 615], [700, 615], [712, 860], [655, 940], [500, 940], [405, 800], [420, 700]] }
+  ],
+  "muros_luces": [
+    { "id": "luces_hotel", "nota": "Muro blanco inclinado con luces rosas, frente oeste de la base del hotel", "linea_px": [[302, 100], [305, 300]] },
+    { "id": "luces_casino", "nota": "Frente escalonado del casino hacia el oeste y suroeste", "linea_px": [[360, 690], [300, 790], [290, 860], [785, 1080]] }
+  ],
+  "calles": [
+    { "id": "oeste", "nombre": "Calle del oeste (doble mano)", "ancho": 9, "eje_px": [[250, 25], [180, 35], [110, 55], [78, 110], [80, 250], [100, 380], [125, 500], [150, 600], [175, 700], [195, 800], [210, 900], [215, 1000]] },
+    { "id": "rulo", "nombre": "Rulo de la entrada (alrededor del cantero)", "ancho": 7, "cerrada": true, "eje_px": [[230, 290], [290, 300], [320, 360], [322, 495], [320, 640], [290, 705], [232, 715], [170, 700], [140, 620], [130, 495], [140, 360], [170, 300]] },
+    { "id": "interna", "nombre": "Calle interna hacia el hotel", "ancho": 7, "eje_px": [[270, 300], [258, 220], [250, 140], [248, 60], [250, 25]] },
+    { "id": "casino", "nombre": "Calle frente al casino", "ancho": 7, "eje_px": [[290, 705], [250, 780], [235, 860], [225, 930]] }
+  ],
+  "verdes": [
+    { "id": "cantero", "nombre": "Cantero central con palmeras", "elipse_px": { "centro": [232, 497], "radios": [72, 180] } },
+    { "id": "verde_hotel", "nombre": "Verde entre la calle interna y el hotel", "poligono_px": [[268, 60], [300, 60], [300, 290], [278, 290]] },
+    { "id": "verde_oeste", "nombre": "Verde del otro lado de la calle", "poligono_px": [[0, 40], [55, 40], [60, 400], [100, 700], [120, 930], [0, 930]] }
+  ],
+  "palmeras_px": [
+    [285, 115], [285, 165], [285, 215], [285, 265],
+    [195, 380], [240, 355], [215, 430], [255, 450], [200, 490], [235, 530], [265, 560], [210, 600], [245, 640],
+    [240, 725], [250, 800], [262, 870],
+    [55, 200], [62, 330], [78, 460], [100, 590], [125, 720]
+  ],
+  "farolas_px": [
+    [100, 160], [105, 330], [128, 500], [158, 670], [188, 840],
+    [272, 150], [292, 330], [300, 600], [270, 760]
+  ],
+  "carteles": [
+    { "id": "pullman", "texto": "pullman HOTELS", "px": [352, 150], "mira": "oeste", "alto": 24 },
+    { "id": "city_center", "texto": "CITY CENTER ROSARIO", "px": [335, 420], "mira": "oeste", "alto": 5 },
+    { "id": "casino", "texto": "Casino", "px": [330, 690], "mira": "oeste", "alto": 6 }
+  ],
+  "banderas_px": [[328, 315], [334, 315], [340, 315]]
+}

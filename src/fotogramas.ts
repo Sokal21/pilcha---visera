@@ -20,7 +20,7 @@ const ROPAS: Record<string, string[]> = {
   'En boxers': [],
 };
 const NOMBRES: Record<string, string> = {
-  caminata: 'Caminata', reposo: 'Reposo zombie', reposo_suave: 'Zombie, cuello suave', reposo_orco: 'Reposo orco',
+  caminata: 'Caminata', corrida: 'Corrida', reposo: 'Reposo zombie', reposo_suave: 'Zombie, cuello suave', reposo_orco: 'Reposo orco',
   reposo_abierto: 'Piernas abiertas', pistola_reposo: 'Apuntando quieto', pistola_caminata: 'Caminando apuntando',
   pistola_guardar: 'Guardar la pistola (al revés, sacarla)',
 };

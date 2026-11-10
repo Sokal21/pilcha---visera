@@ -52,8 +52,18 @@ export class Poligono {
   private readonly vainas: Vaina[] = [];
   private readonly vainaGeo = new THREE.CylinderGeometry(VAINA_RADIO, VAINA_RADIO, VAINA_LARGO, 10);
   private readonly vainaMat = new THREE.MeshStandardMaterial({ color: 0xc9a23a, metalness: 0.85, roughness: 0.3 });
+  // Compartidos entre tiros (cada uno creaba los suyos y nunca se liberaban de la GPU); las chispas y
+  // los trazos se desvanecen, así que cada uno lleva una copia del material que se libera al terminar.
+  private readonly agujeroGeo = new THREE.CircleGeometry(0.012, 10);
+  private readonly agujeroMat = new THREE.MeshBasicMaterial({ color: 0x111111 });
+  private readonly chispaGeo = new THREE.SphereGeometry(0.03, 6, 6);
+  private readonly chispaMat = new THREE.MeshBasicMaterial({ transparent: true });
+  private readonly trazoMat = new THREE.LineBasicMaterial({ color: 0xfff3c4, transparent: true });
 
-  constructor() {
+  /** `decorado`: el polígono de tiro (piso, talud, farolas, mesas y blancos). Sin él queda solo lo
+   * de los tiros (impactos, vainas, trazos) para otro lugar, que suma sus sólidos con `sumarSolidos`. */
+  constructor(decorado = true) {
+    if (!decorado) return;
     const piso = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color: 0x6f7a5a, roughness: 1 }));
     piso.rotation.x = -Math.PI / 2;
     piso.receiveShadow = true;
@@ -176,6 +186,10 @@ export class Poligono {
     this.solidos.push(palo);
   }
 
+  sumarSolidos(objetos: THREE.Object3D[]): void {
+    this.solidos.push(...objetos);
+  }
+
   /** Hasta dónde llega una mirada desde `origen` hacia `dir`: lo primero que toca, o 40 m. */
   alcance(origen: THREE.Vector3, dir: THREE.Vector3): THREE.Vector3 {
     const rayo = new THREE.Raycaster(origen, dir, 0.5, 120);
@@ -211,7 +225,7 @@ export class Poligono {
   }
 
   private agujero(punto: THREE.Vector3, normal: THREE.Vector3): void {
-    const a = new THREE.Mesh(new THREE.CircleGeometry(0.012, 10), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    const a = new THREE.Mesh(this.agujeroGeo, this.agujeroMat);
     a.position.copy(punto).addScaledVector(normal, 0.002);
     a.lookAt(punto.clone().add(normal));
     this.grupo.add(a);
@@ -219,7 +233,9 @@ export class Poligono {
   }
 
   private chispa(punto: THREE.Vector3, color: number): void {
-    const s = new THREE.Mesh(new THREE.SphereGeometry(0.03, 6, 6), new THREE.MeshBasicMaterial({ color, transparent: true }));
+    const mat = this.chispaMat.clone();
+    mat.color.set(color);
+    const s = new THREE.Mesh(this.chispaGeo, mat);
     s.position.copy(punto);
     this.grupo.add(s);
     this.efectos.push({ obj: s, vida: 0.15, total: 0.15 });
@@ -228,7 +244,7 @@ export class Poligono {
   /** Un trazo de la bala, del caño a donde pegó, que se desvanece enseguida. */
   trazo(desde: THREE.Vector3, hasta: THREE.Vector3): void {
     const geo = new THREE.BufferGeometry().setFromPoints([desde, hasta]);
-    const linea = new THREE.Line(geo, new THREE.LineBasicMaterial({ color: 0xfff3c4, transparent: true }));
+    const linea = new THREE.Line(geo, this.trazoMat.clone());
     this.grupo.add(linea);
     this.efectos.push({ obj: linea, vida: 0.06, total: 0.06 });
   }
@@ -321,6 +337,9 @@ export class Poligono {
       if (mat && 'opacity' in mat) mat.opacity = k;
       if (e.vida <= 0) {
         this.grupo.remove(e.obj);
+        const obj = e.obj as THREE.Mesh;
+        (obj.material as THREE.Material).dispose();
+        if (obj.geometry !== this.chispaGeo) obj.geometry.dispose();
         this.efectos.splice(i, 1);
       }
     }

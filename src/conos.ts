@@ -49,14 +49,16 @@ export class Conos {
     });
     for (const l of lamparas) {
       const cono = new THREE.Mesh(new THREE.ConeGeometry(RADIO, ALTO, 40, 1, true), this.material);
-      cono.position.set(l.x, l.y - ALTO / 2, l.z);
+      // Del alto de su farola (el cono está hecho para una de ALTO; una más alta lo estira entero).
+      cono.scale.setScalar(l.y / ALTO);
+      cono.position.set(l.x, l.y / 2, l.z);
       this.grupo.add(cono);
       // Motas al azar adentro del cono.
       const base = new Float32Array(MOTAS * 3);
       const fase = new Float32Array(MOTAS);
       for (let i = 0; i < MOTAS; i++) {
         const y = Math.random() * (l.y - 0.3);
-        const r = Math.sqrt(Math.random()) * RADIO * (1 - y / l.y) * 0.9;
+        const r = Math.sqrt(Math.random()) * RADIO * (l.y / ALTO) * (1 - y / l.y) * 0.9;
         const a = Math.random() * Math.PI * 2;
         base.set([l.x + Math.cos(a) * r, y, l.z + Math.sin(a) * r], i * 3);
         fase[i] = Math.random() * 100;
