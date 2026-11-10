@@ -11,6 +11,7 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { AJUSTES, ajustar, pasoSucio, valor } from './sucio';
 import { Conos } from './conos';
 import { Faldon } from './faldon';
+import { Pose, posesHuesos } from './huesos';
 
 // Un polígono de tiro para probar al protagonista: camina con WASD, con Shift saca la pistola y
 // apunta (la cámara se acerca a su espalda y aparece la mira), con click dispara, con Shift otra
@@ -175,6 +176,8 @@ let actual: THREE.AnimationAction | null = null;
 let reposo = 'reposo_abierto';
 let enfundar: THREE.AnimationAction | null = null;
 let faldon: Faldon | null = null;
+let pose: Pose | null = null;
+let mezclaDedos = 0; // 0 relajada, 1 empuñando
 let modelo: THREE.Object3D | null = null;
 const espalda: THREE.Bone[] = [];
 
@@ -198,7 +201,7 @@ function pasarA(accion: THREE.AnimationAction | undefined | null, fundido = 0.25
 
 function vestir(): void {
   const puestas = new Set<string | null>(Object.values(puesto));
-  if (armada) puestas.add('pistola').add('pistola_mano');
+  if (armada) puestas.add('pistola');
   for (const [nombre, malla] of mallas) {
     // `ropa_<id>__<id>+<id>`: la parte de una prenda que tapan otras (lo del pantalón que queda
     // adentro del camperón) se esconde cuando alguna de ellas está puesta.
@@ -374,6 +377,7 @@ new GLTFLoader().load(`${import.meta.env.BASE_URL}models/protagonista.glb`, (glt
   if (pistola) aplicarAgarre(pistola);
   jugador.updateMatrixWorld(true);
   faldon = new Faldon(modelo);
+  pose = new Pose(modelo);
   mixer = new THREE.AnimationMixer(modelo);
   for (const clip of gltf.animations) acciones.set(clip.name, mixer.clipAction(clip));
   for (const nombre of Object.keys(CAMINATAS) as (keyof typeof CAMINATAS)[]) {
@@ -528,9 +532,12 @@ renderer.setAnimationLoop(() => {
   }
   disparoPendiente = false;
   jugador.rotation.y = mirando + giroApunte * mezclaApunte;
+  pose?.antes(posesHuesos.relajada, posesHuesos.pistola);
   mixer?.update(dt);
   jugador.updateMatrixWorld(true);
   faldon?.colgar();
+  mezclaDedos = THREE.MathUtils.damp(mezclaDedos, armada ? 1 : 0, 14, dt);
+  pose?.aplicar(posesHuesos.relajada, posesHuesos.pistola, mezclaDedos);
   apuntarCaño(dt);
 
   // La cámara: detrás y arriba; apuntando, cerca del hombro derecho.

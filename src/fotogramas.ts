@@ -3,6 +3,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { aplicarAgarre } from './agarre';
 import { Faldon } from './faldon';
+import { Pose, posesHuesos } from './huesos';
 
 // Fotogramas: las animaciones del protagonista cuadro por cuadro, para encontrar dónde se
 // desajustan (una zapatilla que se sale del tobillo, la mano que suelta el arma) y decir en qué
@@ -53,6 +54,7 @@ const cartel = $('cartel');
 
 let mixer: THREE.AnimationMixer | null = null;
 let faldon: Faldon | null = null;
+let pose: Pose | null = null;
 let esqueleto: THREE.SkeletonHelper | null = null;
 const acciones = new Map<string, THREE.AnimationAction>();
 const mallas = new Map<string, THREE.Object3D>();
@@ -69,7 +71,7 @@ function cuadros(): number {
 
 function vestir(): void {
   const puestas = new Set(ROPAS[selRopa.value] ?? []);
-  if (pistola) puestas.add('pistola').add('pistola_mano');
+  if (pistola) puestas.add('pistola');
   for (const [nombre, malla] of mallas) {
     const m = malla as THREE.Mesh;
     if (nombre.startsWith('ropa_')) {
@@ -93,13 +95,17 @@ function mostrar(): void {
   if (!mixer || !accion) return;
   const total = cuadros();
   cuadro = ((cuadro % (total + 1)) + total + 1) % (total + 1);
-  for (const a of acciones.values()) if (a !== accion) a.stop();
+  // Detenida y vuelta a arrancar cada vez: si no, en el mismo cuadro three.js no vuelve a aplicarla y
+  // los huesos con ajuste quedaban en su reposo (los brazos salían de la pose).
+  for (const a of acciones.values()) a.stop();
   accion.play();
   accion.paused = true;
   accion.time = Math.min(cuadro / FPS, accion.getClip().duration);
+  pose?.antes(posesHuesos.relajada, posesHuesos.pistola);
   mixer.update(0);
   modelo?.updateMatrixWorld(true);
   faldon?.colgar();
+  pose?.aplicar(pistola ? posesHuesos.pistola : posesHuesos.relajada);
   linea.max = String(total);
   linea.value = String(cuadro);
   cartel.innerHTML = `${NOMBRES[selClip.value] ?? selClip.value} · cuadro ${cuadro} / ${total}<small>${selClip.value} · ${(cuadro / FPS).toFixed(2)} s</small>`;
@@ -136,6 +142,7 @@ new GLTFLoader().load(`${import.meta.env.BASE_URL}models/protagonista.glb`, (glt
   if (arma) aplicarAgarre(arma);
   modelo.updateMatrixWorld(true);
   faldon = new Faldon(modelo);
+  pose = new Pose(modelo);
   esqueleto = new THREE.SkeletonHelper(modelo);
   esqueleto.visible = false;
   scene.add(esqueleto);
@@ -166,7 +173,7 @@ selClip.onchange = () => {
 };
 selRopa.onchange = () => { vestir(); selRopa.blur(); };
 linea.oninput = () => { cuadro = Number(linea.value); mostrar(); };
-$('pistola').onclick = () => { pistola = !pistola; vestir(); };
+$('pistola').onclick = () => { pistola = !pistola; vestir(); mostrar(); };
 $('rayos').onclick = () => { rayos = !rayos; vestir(); };
 $('huesos').onclick = () => {
   if (!esqueleto) return;

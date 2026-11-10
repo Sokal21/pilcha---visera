@@ -38,6 +38,9 @@ import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 from mathutils.bvhtree import BVHTree
 
+sys.path.append(__import__('os').path.dirname(__file__))
+from dedos import add_fingers  # noqa: E402
+
 
 args = sys.argv[sys.argv.index('--') + 1:]
 files = [a for i, a in enumerate(args) if not a.startswith('--') and (i == 0 or not args[i - 1].startswith('--'))]
@@ -95,6 +98,9 @@ if arm.animation_data:
     arm.animation_data.action = None
 for b in arm.pose.bones:
     b.matrix_basis = Matrix.Identity(4)
+bpy.context.view_layer.update()
+# El rig de Tripo termina en la mano: huesos de dedos, antes de leer los pesos del cuerpo.
+add_fingers(arm, body)
 bpy.context.view_layer.update()
 
 
@@ -861,16 +867,13 @@ for v in body.data.vertices:
 # Manos y cabeza no las tapa nada: colgando junto a la cadera, el rayo de la mano chocaba con el
 # pantalón. El cuello sí pasa por el rayo: exento, la piel de atrás del cuello atravesaba el cuello
 # de la campera.
-bare = [i for i, g in enumerate(groups) if 'Hand' in g or g == 'Head']
+bare = [i for i, g in enumerate(groups) if 'Hand' in g or g == 'Head' or any(f in g for f in ('Thumb', 'Index', 'Middle', 'Ring', 'Pinky'))]
 feet = [i for i, g in enumerate(groups) if 'Foot' in g or 'Toe' in g]
-# La mano derecha abierta se esconde con la pistola en la mano (`cuerpo__pistola`): la reemplaza su
-# copia cerrada en puño, `ropa_pistola_mano`.
-right_hand = groups.index('R_Hand')
+right_hand = [i for i, g in enumerate(groups) if g == 'R_Hand' or (g.startswith('R_') and any(f in g for f in ('Thumb', 'Index', 'Middle', 'Ring', 'Pinky')))]
 covers = {}
 for p in body.data.polygons:
     if W[list(p.vertices)][:, bare].sum(1).mean() > 0.5:
-        key = ('pistola',) if W[list(p.vertices), right_hand].mean() > 0.5 else ()
-        covers.setdefault(key, set()).add(p.index)
+        covers.setdefault((), set()).add(p.index)
         continue
     centre = body.matrix_world @ p.center
     n = (normal_m @ p.normal).normalized()
@@ -882,8 +885,12 @@ for by, faces in sorted(covers.items(), key=lambda kv: -len(kv[1])):
     o = piece(body, faces, 'cuerpo__' + '+'.join(by))
     print(f'CUERPO {o.name}: {len(faces)} caras')
 if '--pistola' in opts:
-    fist_hand = piece(body, covers[('pistola',)], 'ropa_pistola_mano')
-    wrist, way, length, palm = fist(fist_hand, 'R_Hand')
+    # Dónde va la empuñadura: en la mano derecha cerrada (una copia que se cierra solo para medirla;
+    # la mano de verdad cierra los dedos con sus huesos, src/dedos.ts).
+    hand_faces = {p.index for p in body.data.polygons if W[list(p.vertices)][:, right_hand].sum(1).mean() > 0.5}
+    measure = piece(body, hand_faces, 'mano_para_medir')
+    wrist, way, length, palm = fist(measure, 'R_Hand')
+    bpy.data.objects.remove(measure)
     pistol(opts['--pistola'], opts.get('--pistola-textura'), wrist, way, length, palm)
 bpy.data.objects.remove(body)
 

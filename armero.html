@@ -7,15 +7,15 @@
     <style>
       html, body { margin: 0; height: 100%; background: #26272c; color: #eee; font: 14px system-ui, sans-serif; overflow: hidden; }
       canvas { display: block; }
-      #panel { position: fixed; top: 16px; right: 16px; width: 250px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; background: #000a; padding: 12px 14px; border-radius: 10px; }
+      #panel { position: fixed; top: 16px; right: 16px; width: 230px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; background: #000a; padding: 12px 14px; border-radius: 10px; }
       #panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #aaa; margin: 14px 0 6px; }
       #panel h2:first-child { margin-top: 0; }
       #panel button, #panel select { display: block; width: 100%; margin: 4px 0; padding: 7px 10px; border: 1px solid #555; border-radius: 6px; background: #2a2a30; color: #eee; text-align: left; cursor: pointer; font: inherit; }
       #panel button.on { background: #b8231f; border-color: #e33; }
-      #panel input[type=range] { width: 100%; }
       #panel .grilla { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6px; }
       #panel .grilla button { text-align: center; padding: 6px 4px; }
-      #panel label { display: block; margin-top: 6px; color: #ccc; }
+      #panel input[type=range] { width: 100%; }
+      #elegido { font-size: 16px; font-weight: 600; margin: 2px 0 6px; }
       #estado { margin-top: 8px; color: #9c9; min-height: 1.2em; }
       #ayuda { position: fixed; left: 16px; bottom: 14px; background: #0008; padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
     </style>
@@ -26,41 +26,35 @@
       <select id="clip"></select>
       <input id="cuadro" type="range" min="0" max="1" step="0.001" value="0" />
       <div id="tiempo"></div>
+      <div class="grilla">
+        <button data-pose="pistola">Empuñando</button><button data-pose="relajada">Relajada</button>
+      </div>
+      <h2>Manipulando</h2>
+      <div id="elegido"></div>
+      <div class="grilla">
+        <button id="mover">Mover (W)</button><button id="rotar">Girar (E)</button>
+      </div>
+      <button id="local">Ejes propios (Q)</button>
+      <button id="manipular-pistola">Volver a la pistola</button>
+      <button id="volver">Volver esto como estaba</button>
       <h2>Vista</h2>
       <div class="grilla">
-        <button id="vista-arriba">De arriba</button><button id="vista-costado">De costado</button>
-        <button id="vista-atras">De atrás</button><button id="vista-libre">Libre</button>
+        <button id="vista-libre">Libre</button><button id="vista-arriba">De arriba</button>
+        <button id="vista-costado">De costado</button><button id="vista-atras">De atrás</button>
       </div>
-      <h2>Manipular</h2>
-      <button id="mover">Mover (W)</button>
-      <button id="rotar">Rotar (E)</button>
-      <button id="local">Ejes de la pistola (Q)</button>
-      <h2>Correr (respecto del personaje)</h2>
-      <div class="grilla">
-        <button data-mover="0,1,0">Subir ↑</button><button data-mover="0,-1,0">Bajar ↓</button>
-        <button data-mover="0,0,1">Adelante</button><button data-mover="0,0,-1">Atrás</button>
-        <button data-mover="1,0,0">Izquierda</button><button data-mover="-1,0,0">Derecha</button>
-      </div>
-      <h2>Girar</h2>
-      <div class="grilla">
-        <button data-girar="-1,0,0">Caño arriba</button><button data-girar="1,0,0">Caño abajo</button>
-        <button data-girar="0,1,0">Caño izq.</button><button data-girar="0,-1,0">Caño der.</button>
-        <button data-girar="0,0,-1">Rolar izq.</button><button data-girar="0,0,1">Rolar der.</button>
-      </div>
-      <label><input id="fino" type="checkbox" /> Pasos finos (1 mm, 0,5°)</label>
       <h2>Ropa</h2>
-      <button id="tracksuit">Tracksuit</button>
-      <button id="newells">Newell's</button>
+      <div class="grilla">
+        <button id="tracksuit">Tracksuit</button><button id="newells">Newell's</button>
+      </div>
       <button id="boxers">En boxers</button>
-      <h2>Agarre</h2>
-      <button id="guardar">Guardar (el juego lo usa)</button>
-      <button id="original">Volver al de Blender</button>
-      <button id="guardado">Volver al guardado</button>
+      <h2>Guardar</h2>
+      <button id="guardar">Guardar pistola y huesos</button>
+      <button id="original">Pistola como la puso Blender</button>
       <div id="estado"></div>
     </div>
     <div id="ayuda">
+      Click en un punto amarillo para elegir ese hueso · W mover (la muñeca arrastra el brazo, el pie la pierna) · E girar · Q ejes propios o del mundo<br />
       Arrastrá para girar la cámara · rueda para acercar · click derecho para desplazar<br />
-      Flechas: correr adelante/atrás/izquierda/derecha · RePág/AvPág: subir/bajar · Shift: pasos finos<br />
       Roja: hacia dónde apunta el caño · verde: hacia dónde mira el personaje
     </div>
     <script type="module" src="/src/armero.ts"></script>
