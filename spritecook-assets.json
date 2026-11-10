@@ -1,0 +1,51 @@
+{
+  "project_id": "efaec274-965d-488d-a584-b10f59ab3f0e",
+  "protagonista": {
+    "base_turnaround": {
+      "job": "a7b18fb4-513f-4c59-b858-873457ff6ade",
+      "a": "cd1e98ee-b1a9-4aa7-8f2b-fcac7071c951",
+      "b": "f9d60b01-4e94-47a9-a6a1-56a028a1e20b",
+      "c": "86c7c5ce-ca59-431f-8c97-062e1867c548"
+    },
+    "base_turnaround_2": {
+      "job": "c9c66a77-2cdb-4a00-b49c-9bd2daa8e445",
+      "from": "base_turnaround.a",
+      "note": "piel m\u00e1s oscura, rasgos ind\u00edgenas, cara agresiva",
+      "a": "b3163126-fa90-4ee7-ab64-81ce0b4e6e31",
+      "b": "da69a11a-3b9e-4139-87d6-7722a18c6cb6",
+      "c": "b0302e37-e4d8-4a6c-947e-a63a68d34ced"
+    },
+    "base_elegida": "b0302e37-e4d8-4a6c-947e-a63a68d34ced",
+    "tracksuit_jordan": {
+      "job": "6b2712b7-ec5a-450a-8790-6eb84c0d5411",
+      "edit_of": "base_elegida",
+      "a": "b709ed8a-4569-4196-a0c6-3fa79fd0efa3",
+      "b": "9d259707-d304-4e20-b4a4-cd0b0ee7a037"
+    },
+    "newells_chupin_nike": {
+      "job": "f994cdb1-69bc-4725-90f5-6b2318f28a4d",
+      "edit_of": "base_elegida",
+      "a": "12cdf799-b5d6-430d-9322-3474bfe40f91",
+      "b": "8e12dfca-66b5-4358-989d-aa61db7c071b"
+    },
+    "elegidos": {
+      "base": "b0302e37-e4d8-4a6c-947e-a63a68d34ced",
+      "tracksuit_jordan": "b709ed8a-4569-4196-a0c6-3fa79fd0efa3",
+      "newells_chupin_nike": "12cdf799-b5d6-430d-9322-3474bfe40f91"
+    }
+  },
+  "zapatillas": {
+    "ref_jordan_foto": "4e43c593-4fc6-4273-a57e-e28274dc5b1c",
+    "ref_nike_foto": "f34de024-6c8f-4d5a-b6de-193c65fae188",
+    "jordan": {
+      "job": "bdb6709e-6fa5-4e19-9f19-fb2afcafa04e",
+      "a": "8050b357-7248-492b-9c93-3e01b0378b20",
+      "b_elegida": "464d0bff-7431-43dd-a5aa-9692e379f01e"
+    },
+    "nike": {
+      "job": "4f30828b-fbb7-431b-907e-8eb992cbcdce",
+      "a": "ef8ac4ae-34fa-4a5c-a4b6-cb18c3e345c2",
+      "b_elegida": "af5d7d69-7308-494b-92ea-f44e1b0d325a"
+    }
+  }
+}

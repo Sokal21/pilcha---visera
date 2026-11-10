@@ -1,0 +1,16 @@
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 2
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 9
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 16
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 23
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 30
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 37
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 44
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 51
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 58
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 65
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: running 72
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d: success 100
+credits: 30.0
+b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d
+assets/zapatillas/3d/tripo/jordan/b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d_model_url.glb
+assets/zapatillas/3d/tripo/jordan/b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d_rendered_image_url.webp

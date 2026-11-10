@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fotogramas</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #2a2c33; color: #eee; font: 14px system-ui, sans-serif; overflow: hidden; }
+      canvas { display: block; }
+      #panel { position: fixed; top: 16px; right: 16px; width: 240px; max-height: calc(100vh - 32px); overflow-y: auto; box-sizing: border-box; background: #000a; padding: 12px 14px; border-radius: 10px; }
+      #panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #aaa; margin: 14px 0 6px; }
+      #panel h2:first-child { margin-top: 0; }
+      #panel button, #panel select { display: block; width: 100%; margin: 4px 0; padding: 7px 10px; border: 1px solid #555; border-radius: 6px; background: #2a2a30; color: #eee; text-align: left; cursor: pointer; font: inherit; }
+      #panel button.on { background: #b8231f; border-color: #e33; }
+      #panel .grilla { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6px; }
+      #panel .grilla button { text-align: center; padding: 6px 4px; }
+      #cartel { position: fixed; left: 16px; top: 14px; background: #000c; padding: 10px 16px; border-radius: 10px; font-size: 26px; font-weight: 700; line-height: 1.2; }
+      #cartel small { display: block; font-size: 14px; font-weight: 500; color: #bbb; }
+      #barra { position: fixed; left: 16px; right: 272px; bottom: 54px; }
+      #barra input { width: 100%; }
+      #ayuda { position: fixed; left: 16px; bottom: 14px; background: #0008; padding: 6px 12px; border-radius: 8px; font-size: 13px; }
+    </style>
+  </head>
+  <body>
+    <div id="cartel"></div>
+    <div id="barra"><input id="linea" type="range" min="0" max="1" step="1" value="0" /></div>
+    <div id="panel">
+      <h2>Animación</h2>
+      <select id="clip"></select>
+      <h2>Ropa</h2>
+      <select id="ropa"></select>
+      <button id="pistola">Con la pistola</button>
+      <h2>Vista</h2>
+      <div class="grilla">
+        <button data-vista="frente">Frente</button><button data-vista="costado">Costado</button>
+        <button data-vista="atras">Atrás</button><button data-vista="arriba">Arriba</button>
+        <button data-vista="pies">Pies</button><button data-vista="mano">Mano</button>
+      </div>
+      <h2>Ayudas</h2>
+      <button id="rayos">Rayos X (el cuerpo debajo de la ropa)</button>
+      <button id="huesos">Esqueleto</button>
+    </div>
+    <div id="ayuda">D / → un cuadro · A / ← atrás · W / S diez cuadros · Espacio reproducir · arrastrá para girar la cámara</div>
+    <script type="module" src="/src/fotogramas.ts"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 2
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 9
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 16
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 23
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 30
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 37
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 44
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 51
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 58
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: running 65
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2: success 100
+credits: 30.0
+dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2
+assets/zapatillas/3d/tripo/nike/dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2_model_url.glb
+assets/zapatillas/3d/tripo/nike/dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2_rendered_image_url.webp

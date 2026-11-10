@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+tools/mocap/*.fbx
+__pycache__
+references/

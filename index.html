@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pilcha & Visera</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #1b1b1f; color: #eee; font: 15px system-ui, sans-serif; overflow: hidden; }
+      canvas { display: block; cursor: pointer; }
+      #panel { position: fixed; top: 16px; right: 16px; width: 220px; max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; background: #000a; padding: 12px 14px; border-radius: 10px; }
+      #panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #aaa; margin: 14px 0 6px; }
+      #panel h2:first-child { margin-top: 0; }
+      #panel button { display: block; width: 100%; margin: 4px 0; padding: 7px 10px; border: 1px solid #555; border-radius: 6px; background: #2a2a30; color: #eee; text-align: left; cursor: pointer; font: inherit; }
+      #panel button.on { background: #b8231f; border-color: #e33; }
+      #panel .ajuste { display: block; margin: 6px 0; font-size: 13px; color: #ccc; }
+      #panel .ajuste input { display: block; width: 100%; }
+      #panel .tonos { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6px; }
+      #panel .tonos button { text-align: center; padding: 6px 4px; }
+      #ayuda { position: fixed; left: 16px; bottom: 14px; background: #0008; padding: 8px 12px; border-radius: 8px; font-size: 13px; line-height: 1.5; }
+      body.jugando #ayuda .click { display: none; }
+      body:not(.jugando) #ayuda .esc { display: none; }
+      #hud { position: fixed; left: 16px; top: 14px; background: #0008; padding: 6px 12px; border-radius: 8px; font-weight: 600; }
+      #mira { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; box-sizing: border-box; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 2px #000, inset 0 0 2px #000; pointer-events: none; opacity: 0; transition: opacity .15s; }
+      #mira.visible { opacity: 1; }
+      #mira::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 2px #000; }
+      @media (max-width: 600px) { #panel { left: 16px; right: 16px; width: auto; top: auto; bottom: 90px; max-height: 40vh; } }
+    </style>
+  </head>
+  <body>
+    <div id="hud"></div>
+    <div id="mira"></div>
+    <div id="panel"></div>
+    <div id="ayuda">
+      <span class="click">Click en la escena para jugar<br /></span>
+      WASD caminar · mouse mirar · Shift sacar / guardar la pistola · Click disparar
+      <span class="esc"><br />Esc suelta el mouse para usar el panel</span>
+    </div>
+    <div style="position:fixed;left:16px;top:52px;font-size:13px">
+      <a href="/armero.html" style="color:#ccc">Armero: acomodar la pistola en la mano</a> ·
+      <a href="/fotogramas.html" style="color:#ccc">Fotogramas: animaciones cuadro por cuadro</a>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
