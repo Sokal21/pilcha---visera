@@ -8,12 +8,13 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { AJUSTES, ajustar, pasoSucio, valor } from './sucio';
 import { Conos } from './conos';
 import { Faldon } from './faldon';
 import { Movimiento } from './movimiento';
 import { Luna } from './luna';
-import { CityCenter } from './escenario/cityCenter';
+import { CityCenter, COLOR_FAROLAS } from './escenario/cityCenter';
 import { Pose, posesHuesos } from './huesos';
 
 // Un polígono de tiro para probar al protagonista: camina con WASD y corre con Shift; con espacio
@@ -34,8 +35,8 @@ const CAMINATAS = {
 // `pistola_guardar` va de apuntar a guardarla (24 cuadros por segundo). Se usa de 24 a 112: antes
 // apunta quieto, después deja caer el brazo. En el 82 la pistola entra en la funda; al revés, sale.
 const GUARDAR = { desde: 24, hasta: 112, funda: 82, fps: 24 };
-const SACAR_RITMO = 2.4;
-const GUARDAR_RITMO = 2.0;
+const SACAR_RITMO = 3.4;
+const GUARDAR_RITMO = 3.0;
 const CADENCIA = 0.18; // segundos entre tiros
 // La boca del caño en la malla de la pistola (la Glock en metros, ya en ejes de glTF).
 const BOCA = new THREE.Vector3(-0.093, 0.115, -0.003);
@@ -91,12 +92,21 @@ if (ciudad) {
 // casino (se ve sobre él desde la entrada).
 const luna = new Luna(ciudad?.luna ?? new THREE.Vector3(-0.45, 0.42, -0.79));
 scene.add(luna.grupo);
+// Las sombras de la luna cubren un cuadrado alrededor del jugador. En el City Center los edificios
+// son grandes y con la luna baja sus sombras largas: cuadrado de 90 m, la luz bien lejos (si no, lo que
+// quedaba detrás de ella no hacía sombra) y un mapa más fino para que no se pixele.
+const SOMBRA = ciudad ? { lado: 45, distancia: 220, mapa: 4096 } : { lado: 15, distancia: 40, mapa: 2048 };
+sol.shadow.mapSize.set(SOMBRA.mapa, SOMBRA.mapa);
+Object.assign(sol.shadow.camera, { left: -SOMBRA.lado, right: SOMBRA.lado, top: SOMBRA.lado, bottom: -SOMBRA.lado, near: 1, far: SOMBRA.distancia * 2 });
+sol.shadow.camera.updateProjectionMatrix();
+sol.shadow.normalBias = 0.04;
 const fogonazo = new Fogonazo();
 scene.add(fogonazo.grupo);
 const conos = new Conos(ciudad?.lamparas ?? poligono.lamparas);
 scene.add(conos.grupo);
 const FAROLAS = { conos: 0.6, polvo: 0.1 };
 conos.intensidad = FAROLAS.conos;
+if (ciudad) conos.color = COLOR_FAROLAS;
 conos.polvo = FAROLAS.polvo;
 
 const camera = new THREE.PerspectiveCamera(CAMARA.libre.fov, innerWidth / innerHeight, 0.05, 200);
@@ -106,6 +116,18 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.4;
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
+// Cualquier píxel con NaN o infinito pasa a negro antes del resplandor: si no, el desenfoque del
+// resplandor lo desparramaba por media pantalla (un destello negro de un cuadro).
+composer.addPass(new ShaderPass({
+  uniforms: { tDiffuse: { value: null } },
+  vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+  fragmentShader: `uniform sampler2D tDiffuse; varying vec2 vUv;
+    void main() {
+      vec4 c = texture2D(tDiffuse, vUv);
+      bvec4 malo = bvec4(isnan(c.r) || isinf(c.r), isnan(c.g) || isinf(c.g), isnan(c.b) || isinf(c.b), isnan(c.a) || isinf(c.a));
+      gl_FragColor = any(malo) ? vec4(0.0, 0.0, 0.0, 1.0) : c;
+    }`,
+}));
 composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.9, 0.5, 0.75));
 composer.addPass(new OutputPass());
 const sucio = pasoSucio();
@@ -192,7 +214,7 @@ function ponerTonos(n: number): void {
       const e = estandar as THREE.MeshStandardMaterial;
       m.userData.toon = new THREE.MeshToonMaterial({
         color: e.color, map: e.map, emissive: e.emissive, emissiveMap: e.emissiveMap, emissiveIntensity: e.emissiveIntensity,
-        transparent: e.transparent, opacity: e.opacity, side: e.side,
+        transparent: e.transparent, opacity: e.opacity, side: e.side, alphaTest: e.alphaTest,
       });
     }
     (m.userData.toon as THREE.MeshToonMaterial).gradientMap = rampa;
@@ -699,7 +721,7 @@ renderer.setAnimationLoop((t) => {
   if (retroceso > 0) camera.rotateX(retroceso * 0.01);
 
   mira.classList.toggle('visible', estado === 'apuntando');
-  sol.position.copy(jugador.position).addScaledVector(luna.direccion, 40);
+  sol.position.copy(jugador.position).addScaledVector(luna.direccion, SOMBRA.distancia);
   sol.target.position.copy(jugador.position);
   luna.actualizar(camera);
 

@@ -4,6 +4,7 @@ import { letrasEnRelieve } from './letras';
 import { armarHotel } from './hotel';
 import { armarMuro, profundidadAuras, texturaPlacas } from './muros';
 import { armarEntrada } from './entrada';
+import { armarPalmeras, RADIO_PALMERA } from './palmeras';
 
 // La maqueta del City Center Rosario: bloques grises a escala real armados con el plano
 // (city-center.json, calcado del satélite; tools/plano/dibujar.py lo dibuja). Sirve para caminarlo y
@@ -18,7 +19,8 @@ interface Verde { id: string; poligono_px?: Px[]; elipse_px?: { centro: Px; radi
 const ESC = plano.escala;
 const [OX, OY] = plano.origen_px;
 const RADIO_JUGADOR = 0.35;
-const PALMERA_ALTO = 11;
+/** La luz de las farolas de calle: blanca, apenas fría. */
+export const COLOR_FAROLAS = 0xeef2ff;
 const FAROLA_ALTO = 9;
 
 /** De píxeles del satélite a metros del juego (x, z). */
@@ -197,30 +199,32 @@ export class CityCenter {
       this.animaciones.push(muro.animar);
     });
 
-    // Palmeras: tronco y una copa de bloque; el modelo de verdad viene después.
-    const tronco = new THREE.MeshStandardMaterial({ color: 0x6b5a45, roughness: 1 });
-    const hojas = new THREE.MeshStandardMaterial({ color: 0x2f5a2a, roughness: 1 });
-    const troncoGeo = new THREE.CylinderGeometry(0.22, 0.32, PALMERA_ALTO, 8);
-    const copaGeo = new THREE.ConeGeometry(2.6, 2.2, 8);
-    for (const px of plano.palmeras_px) {
-      const p = m(px);
-      const t = new THREE.Mesh(troncoGeo, tronco);
-      t.position.set(p.x, PALMERA_ALTO / 2, p.y);
-      const c = new THREE.Mesh(copaGeo, hojas);
-      c.position.set(p.x, PALMERA_ALTO, p.y);
-      c.rotation.x = Math.PI; // abierta hacia abajo, como cuelgan las hojas
-      // Sin la sombra de la copa: el cono proyectaba un triángulo negro sobre los muros. Vuelve con
-      // las palmeras de verdad (hojas).
-      t.castShadow = true;
-      this.grupo.add(t, c);
-      this.solidos.push(t);
-      this.postes.push({ p, r: 0.35 });
-    }
+    // «Casino» en relieve, rosa e iluminado, sobre el frente del casino (mirando hacia afuera de su
+    // primer tramo, el que da a la entrada) y por encima de las lámparas.
+    const cartel = plano.carteles.find((c) => c.id === 'casino')!;
+    const frente = plano.muros_luces.find((mu) => mu.id === 'luces_casino')!;
+    const [fa, fb] = [m(frente.linea_px[0]), m(frente.linea_px[1])];
+    let afuera = new THREE.Vector2(fb.y - fa.y, fa.x - fb.x).normalize();
+    const lugarCartel = m(cartel.px);
+    if (afuera.dot(m(frente.adentro_px).sub(lugarCartel)) > 0) afuera = afuera.negate();
+    const letrasCasino = new THREE.Mesh(letrasEnRelieve(cartel.texto, 3, 0.3, 14, 'pacifico'), new THREE.MeshStandardMaterial({
+      color: 0xff7fd6, emissive: 0xff3cbf, emissiveIntensity: 1.1, roughness: 0.4,
+    }));
+    letrasCasino.rotation.y = Math.atan2(afuera.x, afuera.y);
+    letrasCasino.position.set(lugarCartel.x + afuera.x * 0.02, cartel.alto, lugarCartel.y + afuera.y * 0.02);
+    letrasCasino.castShadow = true;
+    this.grupo.add(letrasCasino);
+
+    // Palmeras canarias (src/escenario/palmeras.ts).
+    const lugares = plano.palmeras_px.map(m);
+    this.grupo.add(armarPalmeras(lugares, 1912, this.solidos));
+    for (const p of lugares) this.postes.push({ p, r: RADIO_PALMERA });
 
     // Farolas de calle: poste alto, brazo y una lámpara que ilumina para abajo. Las dos más cerca de
     // la entrada hacen sombra (cada sombra vuelve a dibujar la escena).
     const metal = new THREE.MeshStandardMaterial({ color: 0x9a9ea6, metalness: 0.5, roughness: 0.5 });
-    const lamparaMat = new THREE.MeshStandardMaterial({ color: 0xfff1d0, emissive: 0xffd9a0, emissiveIntensity: 4 });
+    // Luz blanca (las del polígono son cálidas).
+    const lamparaMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf4f7ff, emissiveIntensity: 4 });
     const farolas = plano.farolas_px.map(m);
     const conSombra = [...farolas].sort((a, b) => a.length() - b.length()).slice(0, 2);
     for (const p of farolas) {
@@ -239,7 +243,7 @@ export class CityCenter {
       lampara.position.copy(cabeza);
       this.grupo.add(brazo, lampara);
       this.lamparas.push(cabeza.clone());
-      const luz = new THREE.SpotLight(0xffc98a, 260, 34, 0.75, 0.6, 2);
+      const luz = new THREE.SpotLight(COLOR_FAROLAS, 260, 34, 0.75, 0.6, 2);
       luz.position.copy(cabeza).add(new THREE.Vector3(0, -0.06, 0));
       luz.target.position.copy(cabeza).setY(0);
       if (conSombra.includes(p)) {

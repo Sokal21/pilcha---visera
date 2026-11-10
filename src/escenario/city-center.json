@@ -41,7 +41,7 @@
   "carteles": [
     { "id": "pullman", "texto": "pullman HOTELS", "px": [352, 150], "mira": "oeste", "alto": 24 },
     { "id": "city_center", "texto": "CITY CENTER ROSARIO", "px": [335, 420], "mira": "oeste", "alto": 5 },
-    { "id": "casino", "texto": "Casino", "px": [330, 690], "mira": "oeste", "alto": 6 }
+    { "id": "casino", "texto": "Casino", "px": [345, 715], "mira": "oeste", "alto": 8, "nota": "Sobre el primer tramo del frente del casino, mirando hacia afuera de él, arriba de las lámparas" }
   ],
   "banderas_px": [[328, 315], [334, 315], [340, 315]]
 }

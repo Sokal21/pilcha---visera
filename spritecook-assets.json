@@ -10,7 +10,7 @@
     "base_turnaround_2": {
       "job": "c9c66a77-2cdb-4a00-b49c-9bd2daa8e445",
       "from": "base_turnaround.a",
-      "note": "piel m\u00e1s oscura, rasgos ind\u00edgenas, cara agresiva",
+      "note": "piel más oscura, rasgos indígenas, cara agresiva",
       "a": "b3163126-fa90-4ee7-ab64-81ce0b4e6e31",
       "b": "da69a11a-3b9e-4139-87d6-7722a18c6cb6",
       "c": "b0302e37-e4d8-4a6c-947e-a63a68d34ced"
@@ -46,6 +46,13 @@
       "job": "4f30828b-fbb7-431b-907e-8eb992cbcdce",
       "a": "ef8ac4ae-34fa-4a5c-a4b6-cb18c3e345c2",
       "b_elegida": "af5d7d69-7308-494b-92ea-f44e1b0d325a"
+    }
+  },
+  "palmera": {
+    "nota": "Palmera canaria (Phoenix canariensis) para el City Center. Elegida la B; Tripo image-to-model 457eb181-45ad-4a7c-b07e-6ac9b0ce58cb -> public/models/palmera.glb",
+    "conceptos": {
+      "a": "ea5d2af0-dc3d-4214-af27-a9ffe12d6601",
+      "b_elegida": "0d64707d-0b63-4c8f-b9dd-17229a1ed7bb"
     }
   }
 }

@@ -48,6 +48,7 @@ export class Poligono {
   private readonly blancos: THREE.Mesh[] = [];
   private readonly agujeros: THREE.Mesh[] = [];
   private readonly solidos: THREE.Object3D[] = [];
+  private readonly externos: THREE.Object3D[][] = [];
   private readonly efectos: { obj: THREE.Object3D; vida: number; total: number }[] = [];
   private readonly vainas: Vaina[] = [];
   private readonly vainaGeo = new THREE.CylinderGeometry(VAINA_RADIO, VAINA_RADIO, VAINA_LARGO, 10);
@@ -186,14 +187,16 @@ export class Poligono {
     this.solidos.push(palo);
   }
 
+  /** Los sólidos de otro lugar. Se guarda la lista misma: lo que se le agregue después (las palmeras,
+   * cuando termina de cargar su modelo) también cuenta. */
   sumarSolidos(objetos: THREE.Object3D[]): void {
-    this.solidos.push(...objetos);
+    this.externos.push(objetos);
   }
 
   /** Hasta dónde llega una mirada desde `origen` hacia `dir`: lo primero que toca, o 40 m. */
   alcance(origen: THREE.Vector3, dir: THREE.Vector3): THREE.Vector3 {
     const rayo = new THREE.Raycaster(origen, dir, 0.5, 120);
-    const objetos = [...this.latas.map((l) => l.malla), ...this.blancos, ...this.solidos];
+    const objetos = [...this.latas.map((l) => l.malla), ...this.blancos, ...this.solidos, ...this.externos.flat()];
     const hit = rayo.intersectObjects(objetos, false)[0];
     return hit ? hit.point : origen.clone().addScaledVector(dir, 40);
   }
@@ -201,7 +204,7 @@ export class Poligono {
   /** Un tiro desde `origen` hacia `dir`: qué toca primero, y lo que eso le hace. */
   disparar(origen: THREE.Vector3, dir: THREE.Vector3): Impacto | null {
     const rayo = new THREE.Raycaster(origen, dir, 0.1, 120);
-    const objetos = [...this.latas.map((l) => l.malla), ...this.blancos, ...this.solidos];
+    const objetos = [...this.latas.map((l) => l.malla), ...this.blancos, ...this.solidos, ...this.externos.flat()];
     const hit = rayo.intersectObjects(objetos, false)[0];
     if (!hit) return null;
     const normal = hit.face ? hit.face.normal.clone().transformDirection(hit.object.matrixWorld) : dir.clone().negate();

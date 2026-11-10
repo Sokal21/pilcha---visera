@@ -72,6 +72,12 @@ export class Conos {
     }
   }
 
+  /** El color de los conos y del polvo (el de la luz de las farolas). */
+  set color(c: THREE.ColorRepresentation) {
+    this.material.uniforms.color.value.set(c);
+    this.polvoMat.color.set(c);
+  }
+
   set intensidad(v: number) {
     this.material.uniforms.intensidad.value = v;
     for (const c of this.grupo.children) if ((c as THREE.Mesh).isMesh) c.visible = v > 0;
