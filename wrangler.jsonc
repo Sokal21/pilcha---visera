@@ -1,0 +1,10 @@
+// El juego en un Cloudflare Worker: solo archivos estáticos (lo que deja `pnpm build` en dist/),
+// sin código de servidor. `pnpm run deploy` arma el build y lo sube (`pnpm deploy` solo es otro comando de pnpm).
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "pilcha-y-visera",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist"
+  }
+}

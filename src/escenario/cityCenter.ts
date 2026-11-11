@@ -4,7 +4,9 @@ import { letrasEnRelieve } from './letras';
 import { armarHotel } from './hotel';
 import { armarMuro, profundidadAuras, texturaPlacas } from './muros';
 import { armarEntrada } from './entrada';
-import { armarPalmeras, RADIO_PALMERA } from './palmeras';
+import { armarPalmeras, RADIO_PALMERA, vientoPalmeras } from './palmeras';
+import { adentroDe, armarPiso, medidorDeCalles, recortarLinea, ubicadorDeVereda } from './piso';
+import { armarCantero } from './canteros';
 
 // La maqueta del City Center Rosario: bloques grises a escala real armados con el plano
 // (city-center.json, calcado del satélite; tools/plano/dibujar.py lo dibuja). Sirve para caminarlo y
@@ -19,8 +21,13 @@ interface Verde { id: string; poligono_px?: Px[]; elipse_px?: { centro: Px; radi
 const ESC = plano.escala;
 const [OX, OY] = plano.origen_px;
 const RADIO_JUGADOR = 0.35;
+const VEREDA_CANTERO = 1.8; // entre el cordón del rulo y el pasto del cantero
+const VEREDA_MURO = 0.8; // entre la punta de un muro de luces y el cordón de la calle
 /** La luz de las farolas de calle: blanca, apenas fría. */
 export const COLOR_FAROLAS = 0xeef2ff;
+const LUCES_FAROLAS = 4; // farolas que iluminan de verdad a la vez
+const INTENSIDAD_FAROLA = 260;
+const FUNDIDO_FAROLA = 6; // metros antes del corte en que la luz se va apagando
 const FAROLA_ALTO = 9;
 
 /** De píxeles del satélite a metros del juego (x, z). */
@@ -40,40 +47,7 @@ function bloque(puntos: THREE.Vector2[], desde: number, alto: number, material: 
   return malla;
 }
 
-/** Una cinta plana a lo largo de un eje suavizado (calles), apenas sobre el piso. */
-function cinta(eje: THREE.Vector2[], ancho: number, cerrada: boolean, y: number, material: THREE.Material): THREE.Mesh {
-  const curva = new THREE.CatmullRomCurve3(eje.map((p) => new THREE.Vector3(p.x, 0, p.y)), cerrada, 'centripetal');
-  const n = Math.max(8, Math.round(curva.getLength() / 1.5));
-  const puntos = curva.getSpacedPoints(n);
-  const pos: number[] = [];
-  const indices: number[] = [];
-  puntos.forEach((p, i) => {
-    const t = curva.getTangentAt(Math.min(i / n, 1));
-    const normal = new THREE.Vector3(-t.z, 0, t.x).multiplyScalar(ancho / 2);
-    pos.push(p.x + normal.x, y, p.z + normal.z, p.x - normal.x, y, p.z - normal.z);
-    if (i > 0) {
-      const a = (i - 1) * 2;
-      indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-    }
-  });
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  geo.setIndex(indices);
-  geo.computeVertexNormals();
-  // Con el material de dos caras se ve sea cual sea el sentido en que se recorrió el eje.
-  const malla = new THREE.Mesh(geo, material);
-  malla.receiveShadow = true;
-  return malla;
-}
 
-function plana(forma: THREE.Shape, y: number, material: THREE.Material): THREE.Mesh {
-  const geo = new THREE.ShapeGeometry(forma, 32);
-  geo.rotateX(-Math.PI / 2);
-  geo.translate(0, y, 0);
-  const malla = new THREE.Mesh(geo, material);
-  malla.receiveShadow = true;
-  return malla;
-}
 
 function dentro(p: THREE.Vector2, poligono: THREE.Vector2[]): boolean {
   let adentro = false;
@@ -120,31 +94,24 @@ export class CityCenter {
   private readonly postes: { p: THREE.Vector2; r: number }[] = [];
   private readonly zona: THREE.Vector2[];
   private readonly entrada: ReturnType<typeof armarEntrada>;
+  private readonly lucesFarolas: THREE.SpotLight[] = [];
 
   constructor() {
     const mat = (color: number) => new THREE.MeshStandardMaterial({ color, roughness: 0.95 });
-    const piso = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), mat(0x8c8a84)); // explanada
-    piso.rotation.x = -Math.PI / 2;
-    piso.receiveShadow = true;
-    this.grupo.add(piso);
-    this.solidos.push(piso);
-
-    const pasto = mat(0x4f6b3c);
-    for (const v of plano.verdes as Verde[]) {
-      let forma: THREE.Shape;
-      if (v.elipse_px) {
-        const c = m(v.elipse_px.centro);
-        forma = new THREE.Shape();
-        forma.absellipse(c.x, -c.y, v.elipse_px.radios[0] * ESC, v.elipse_px.radios[1] * ESC, 0, Math.PI * 2, false, 0);
-      } else {
-        forma = new THREE.Shape(v.poligono_px!.map((p) => m(p)).map((p) => new THREE.Vector2(p.x, -p.y)));
-      }
-      this.grupo.add(plana(forma, 0.02, pasto));
-    }
-    const asfalto = new THREE.MeshStandardMaterial({ color: 0x3a3c42, roughness: 0.9, side: THREE.DoubleSide });
-    for (const c of plano.calles as Calle[]) {
-      this.grupo.add(cinta(c.eje_px.map(m), c.ancho, !!c.cerrada, 0.04, asfalto));
-    }
+    // El piso: explanada, pasto, calles con cordones y rayas (src/escenario/piso.ts).
+    const calles = (plano.calles as Calle[]).map((c) => ({ eje: c.eje_px.map(m), ancho: c.ancho, cerrada: !!c.cerrada, dobleMano: c.id === 'oeste' }));
+    // El cantero sale del rulo que lo rodea (con una elipse la vereda se angostaba hasta desaparecer).
+    const rulo = calles[(plano.calles as Calle[]).findIndex((c) => c.id === 'rulo')];
+    const verdes = (plano.verdes as Verde[]).map((v) =>
+      v.elipse_px ? adentroDe(rulo, VEREDA_CANTERO) : new THREE.Shape(v.poligono_px!.map((p) => m(p)).map((p) => new THREE.Vector2(p.x, -p.y))));
+    const piso = armarPiso(
+      calles,
+      verdes,
+      // El cartel de velocidad máxima, en la punta norte del cantero.
+      m([232, 330]),
+    );
+    this.grupo.add(piso.grupo);
+    this.solidos.push(...piso.solidos);
 
     const placas = texturaPlacas(true);
     const colores: Record<string, number> = {
@@ -187,9 +154,12 @@ export class CityCenter {
     this.paredes.push(...this.entrada.paredes);
 
     // Los muros blancos con luces rosas (la base del hotel y el frente del casino).
+    // Donde la línea del plano llega a una calle, el muro se corta antes (con vereda hasta el cordón).
+    const aCalle = medidorDeCalles(calles);
     plano.muros_luces.forEach((mu, k) => {
+      const { linea, altos } = recortarLinea(mu.linea_px.map(m), mu.altos, (p) => aCalle(p) >= VEREDA_MURO);
       const muro = armarMuro({
-        linea: mu.linea_px.map(m), adentro: m(mu.adentro_px), altos: mu.altos, fondo: mu.fondo, sesgo: mu.sesgo, semilla: 501 + k,
+        linea, adentro: m(mu.adentro_px), altos, fondo: mu.fondo, sesgo: mu.sesgo, semilla: 501 + k,
       });
       this.grupo.add(muro.grupo);
       this.solidos.push(...muro.solidos);
@@ -197,6 +167,10 @@ export class CityCenter {
       this.transparentes.push(...muro.transparentes);
       this.soloNormales.push(...muro.soloNormales);
       this.animaciones.push(muro.animar);
+      // El cantero con arbustos al pie del muro.
+      const cantero = armarCantero(linea, m(mu.adentro_px), 901 + k, aCalle);
+      this.grupo.add(cantero.grupo);
+      this.paredes.push(...cantero.paredes);
     });
 
     // «Casino» en relieve, rosa e iluminado, sobre el frente del casino (mirando hacia afuera de su
@@ -217,41 +191,45 @@ export class CityCenter {
 
     // Palmeras canarias (src/escenario/palmeras.ts).
     const lugares = plano.palmeras_px.map(m);
-    this.grupo.add(armarPalmeras(lugares, 1912, this.solidos));
+    this.grupo.add(armarPalmeras(lugares, 1912, this.solidos, this.transparentes));
     for (const p of lugares) this.postes.push({ p, r: RADIO_PALMERA });
 
-    // Farolas de calle: poste alto, brazo y una lámpara que ilumina para abajo. Las dos más cerca de
-    // la entrada hacen sombra (cada sombra vuelve a dibujar la escena).
+    // Farolas de calle: poste alto, brazo y una lámpara que ilumina para abajo. Sin sombra: cada una
+    // volvía a dibujar la escena y en el navegador no se notaba al lado de la de la luna.
     const metal = new THREE.MeshStandardMaterial({ color: 0x9a9ea6, metalness: 0.5, roughness: 0.5 });
     // Luz blanca (las del polígono son cálidas).
     const lamparaMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xf4f7ff, emissiveIntensity: 4 });
-    const farolas = plano.farolas_px.map(m);
-    const conSombra = [...farolas].sort((a, b) => a.length() - b.length()).slice(0, 2);
-    for (const p of farolas) {
+    // En la vereda: las que el plano dejaba sobre una calle se corren afuera del cordón; el brazo, hacia la calle.
+    const enVereda = ubicadorDeVereda(calles);
+    const farolas = plano.farolas_px.map((px) => enVereda(m(px)));
+    for (const farola of farolas) {
+      const { p, hacia } = farola;
       const poste = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, FAROLA_ALTO, 10), metal);
       poste.position.set(p.x, FAROLA_ALTO / 2, p.y);
       poste.castShadow = true;
       this.grupo.add(poste);
       this.solidos.push(poste);
       this.postes.push({ p, r: 0.15 });
-      // El brazo hacia el lado de la entrada (x = 0); en la maqueta alcanza.
-      const hacia = new THREE.Vector2(Math.sign(-p.x) || 1, 0);
-      const cabeza = new THREE.Vector3(p.x + hacia.x * 1.4, FAROLA_ALTO - 0.15, p.y);
+      // El brazo y la lámpara, girados hacia la calle.
+      const giro = -Math.atan2(hacia.y, hacia.x);
+      const cabeza = new THREE.Vector3(p.x + hacia.x * 1.4, FAROLA_ALTO - 0.15, p.y + hacia.y * 1.4);
       const brazo = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.08), metal);
-      brazo.position.set(p.x + hacia.x * 0.7, FAROLA_ALTO - 0.05, p.y);
+      brazo.position.set(p.x + hacia.x * 0.7, FAROLA_ALTO - 0.05, p.y + hacia.y * 0.7);
+      brazo.rotation.y = giro;
       const lampara = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.08, 0.28), lamparaMat);
       lampara.position.copy(cabeza);
+      lampara.rotation.y = giro;
       this.grupo.add(brazo, lampara);
       this.lamparas.push(cabeza.clone());
-      const luz = new THREE.SpotLight(COLOR_FAROLAS, 260, 34, 0.75, 0.6, 2);
-      luz.position.copy(cabeza).add(new THREE.Vector3(0, -0.06, 0));
-      luz.target.position.copy(cabeza).setY(0);
-      if (conSombra.includes(p)) {
-        luz.castShadow = true;
-        luz.shadow.mapSize.set(1024, 1024);
-        luz.shadow.bias = -0.0005;
-      }
+    }
+    // Las luces de verdad: unas pocas, para las farolas más cerca del jugador (el material calcula todas
+    // las luces de la escena en cada píxel: medido en el navegador, con las nueve encendidas el juego
+    // bajaba a 40 por segundo, con cuatro andaba a 60). Las demás se ven prendidas igual (la lámpara
+    // brilla y tiene su cono), solo no iluminan, y a esa distancia casi no llegaban.
+    for (let i = 0; i < LUCES_FAROLAS; i++) {
+      const luz = new THREE.SpotLight(COLOR_FAROLAS, 0, 34, 0.75, 0.6, 2);
       this.grupo.add(luz, luz.target);
+      this.lucesFarolas.push(luz);
     }
 
     this.zona = plano.zona_jugable_px.map(m);
@@ -360,7 +338,28 @@ export class CityCenter {
   /** Cada cuadro, con el tiempo en segundos y dónde está el jugador (las luces de los muros y su reflejo). */
   actualizar(t: number, jugador: THREE.Vector3): void {
     for (const animar of this.animaciones) animar(t, jugador);
+    vientoPalmeras(t);
     this.entrada.actualizar(t, jugador);
+    this.repartirLuces(jugador);
+  }
+
+  /** Las luces de verdad a las farolas más cerca del jugador. La que se acerca al corte (la distancia
+   * de la primera que queda sin luz) se va apagando antes, así el cambio de farola no salta. */
+  private repartirLuces(jugador: THREE.Vector3): void {
+    const orden = this.lamparas
+      .map((l) => ({ l, d: Math.hypot(l.x - jugador.x, l.z - jugador.z) }))
+      .sort((a, b) => a.d - b.d);
+    const corte = orden[LUCES_FAROLAS]?.d ?? Infinity;
+    this.lucesFarolas.forEach((luz, i) => {
+      const f = orden[i];
+      if (!f) {
+        luz.intensity = 0;
+        return;
+      }
+      luz.position.set(f.l.x, f.l.y - 0.06, f.l.z);
+      luz.target.position.set(f.l.x, 0, f.l.z);
+      luz.intensity = INTENSIDAD_FAROLA * THREE.MathUtils.smoothstep(corte - f.d, 0, FUNDIDO_FAROLA);
+    });
   }
 
   /** Si el jugador puede pararse en (x, z): dentro de la zona y fuera de edificios, palmeras y postes. */

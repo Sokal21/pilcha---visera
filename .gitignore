@@ -4,3 +4,4 @@ dist
 tools/mocap/*.fbx
 __pycache__
 references/
+.wrangler

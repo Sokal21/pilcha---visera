@@ -1,6 +1,6 @@
 """Take a finished model (animated or not) down to fewer triangles, in Blender without a window.
 
-    Blender -b --python scripts/blender/decimate.py -- IN.glb OUT.glb --faces 2500 [--keep 400]
+    Blender -b --python scripts/blender/decimate.py -- IN.glb OUT.glb --faces 2500 [--keep 400] [--merge 1]
 
 The last step after prepare_model.py or prepare_rigged.py; IN and OUT may be the same file. The game
 draws the world at 1.8 units a pixel and then pixelates it: a figure of 8000 triangles stands 45
@@ -14,10 +14,14 @@ shading changes, and a phone has a quarter of the vertices to work.
   and at sharp edges, so the texture does not smear and the hard lines hold; the bones' weights are
   carried over, so the clips still play.
 - The armature, its clips, the props on its bones, the names of everything: all as they were.
+- `--merge 1` first welds the vertices glTF splits along the texture seams. Without it each UV island
+  is collapsed on its own, its border pulled away from the next one's, and the model opens in cracks
+  (a Tripo palm went from 30 open edges to 5000).
 """
 import os
 import sys
 
+import bmesh
 import bpy
 
 args = sys.argv[sys.argv.index('--') + 1:]
@@ -25,6 +29,7 @@ src, dst = args[0], args[1]
 opts = dict(zip(args[2::2], args[3::2]))
 FACES = int(opts.get('--faces', 2500))
 KEEP = int(opts.get('--keep', 400))
+MERGE = opts.get('--merge', '0') == '1'
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 bpy.ops.import_scene.gltf(filepath=src)
@@ -45,6 +50,12 @@ for o in meshes:
     if o.data.shape_keys:
         print(f'SKIPPED {o.name}: it has shape keys, which a collapse cannot keep')
         continue
+    if MERGE:
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-5)
+        bm.to_mesh(o.data)
+        bm.free()
     bpy.context.view_layer.objects.active = o
     mod = o.modifiers.new('decimate', 'DECIMATE')
     mod.decimate_type = 'COLLAPSE'

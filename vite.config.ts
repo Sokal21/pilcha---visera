@@ -48,11 +48,8 @@ export default defineConfig({
   optimizeDeps: { include: ['three', ...THREE_ADDONS] },
   build: {
     rollupOptions: {
-      input: {
-        juego: resolve(import.meta.dirname, 'index.html'),
-        armero: resolve(import.meta.dirname, 'armero.html'),
-        fotogramas: resolve(import.meta.dirname, 'fotogramas.html'),
-      },
+      // Solo el juego: el armero y fotogramas son herramientas, quedan en el servidor de desarrollo.
+      input: { juego: resolve(import.meta.dirname, 'index.html') },
     },
   },
 });

@@ -12,7 +12,6 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { AJUSTES, ajustar, pasoSucio, valor } from './sucio';
 import { Conos } from './conos';
 import { Faldon } from './faldon';
-import { Movimiento } from './movimiento';
 import { Luna } from './luna';
 import { CityCenter, COLOR_FAROLAS } from './escenario/cityCenter';
 import { Pose, posesHuesos } from './huesos';
@@ -54,9 +53,12 @@ const CAMARA = {
 // Sin antialias del lienzo: todo se dibuja en las texturas del composer y el lienzo solo recibe la
 // imagen final, así que su multimuestreo se pagaba sin verse.
 const renderer = new THREE.WebGLRenderer({ antialias: false });
-// Resolución de dibujo: en pantallas Retina, 2 dibuja cuatro veces los píxeles de 1 en cada pasada
-// (escena, normales, resplandor, desenfoque, tinta); 1,5 casi no se nota y cuesta la mitad.
-const RESOLUCION = { valor: Math.min(devicePixelRatio, 1.5) };
+// Resolución de dibujo: lo que más cuesta es la cantidad de píxeles (medido en el navegador: en una
+// ventana de 2560 a 1,5 se dibujaban 7,6 millones y andaba a 30 por segundo; a 1, a 60). Hasta 1,5,
+// pero sin pasar de MAX_PIXELES. Si se la cambia en el panel, queda la elegida.
+const MAX_PIXELES = 4e6;
+const resolucionAutomatica = () => Math.min(devicePixelRatio, 1.5, Math.sqrt(MAX_PIXELES / (innerWidth * innerHeight)));
+const RESOLUCION = { valor: resolucionAutomatica(), elegida: false };
 renderer.setPixelRatio(RESOLUCION.valor);
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
@@ -78,9 +80,12 @@ sol.shadow.mapSize.set(2048, 2048);
 Object.assign(sol.shadow.camera, { left: -15, right: 15, top: 15, bottom: -15, near: 1, far: 60 });
 scene.add(sol, sol.target);
 
-// El lugar: el polígono de tiro o la maqueta del City Center (?lugar=city-center). Los tiros son los
+// El lugar: el City Center o el polígono de tiro (?lugar=poligono). Los tiros son los
 // mismos en los dos; el City Center suma sus edificios para que les peguen.
-const ciudad = new URLSearchParams(location.search).get('lugar') === 'city-center' ? new CityCenter() : null;
+// La página principal es el City Center; el polígono de tiro queda en ?lugar=poligono. En el build
+// final no está el panel.
+if (import.meta.env.PROD) document.body.classList.add('produccion');
+const ciudad = new URLSearchParams(location.search).get('lugar') === 'poligono' ? null : new CityCenter();
 const poligono = new Poligono(!ciudad);
 scene.add(poligono.grupo);
 if (ciudad) {
@@ -94,8 +99,8 @@ const luna = new Luna(ciudad?.luna ?? new THREE.Vector3(-0.45, 0.42, -0.79));
 scene.add(luna.grupo);
 // Las sombras de la luna cubren un cuadrado alrededor del jugador. En el City Center los edificios
 // son grandes y con la luna baja sus sombras largas: cuadrado de 90 m, la luz bien lejos (si no, lo que
-// quedaba detrás de ella no hacía sombra) y un mapa más fino para que no se pixele.
-const SOMBRA = ciudad ? { lado: 45, distancia: 220, mapa: 4096 } : { lado: 15, distancia: 40, mapa: 2048 };
+// quedaba detrás de ella no hacía sombra).
+const SOMBRA = ciudad ? { lado: 45, distancia: 220, mapa: 2048 } : { lado: 15, distancia: 40, mapa: 2048 };
 sol.shadow.mapSize.set(SOMBRA.mapa, SOMBRA.mapa);
 Object.assign(sol.shadow.camera, { left: -SOMBRA.lado, right: SOMBRA.lado, top: SOMBRA.lado, bottom: -SOMBRA.lado, near: 1, far: SOMBRA.distancia * 2 });
 sol.shadow.camera.updateProjectionMatrix();
@@ -128,7 +133,11 @@ composer.addPass(new ShaderPass({
       gl_FragColor = any(malo) ? vec4(0.0, 0.0, 0.0, 1.0) : c;
     }`,
 }));
-composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.9, 0.5, 0.75));
+const resplandor = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.9, 0.5, 0.75);
+// A media resolución: es un brillo difuso, no se nota, y a resolución entera hacía los picos de lentitud.
+const tamañoResplandor = resplandor.setSize.bind(resplandor);
+resplandor.setSize = (w: number, h: number) => tamañoResplandor(Math.round(w / 2), Math.round(h / 2));
+composer.addPass(resplandor);
 composer.addPass(new OutputPass());
 const sucio = pasoSucio();
 composer.addPass(sucio);
@@ -140,11 +149,6 @@ const pintaNormales = new THREE.MeshNormalMaterial();
 sucio.uniforms.tNormal.value = normales.texture;
 sucio.uniforms.tDepth.value = normales.depthTexture;
 ciudad?.usarProfundidad(normales.depthTexture!, camera);
-// El desenfoque de movimiento va antes de la tinta y el granulado (que no se barren).
-const movimiento = new Movimiento(normales.depthTexture!);
-movimiento.cantidad = 0.5;
-const tamañoPantalla = new THREE.Vector2();
-composer.insertPass(movimiento.paso, composer.passes.indexOf(sucio));
 sucio.uniforms.camaraCerca.value = camera.near;
 sucio.uniforms.camaraLejos.value = camera.far;
 
@@ -155,15 +159,16 @@ function medirSucio(): void {
 }
 medirSucio();
 
-function ponerResolucion(v: number): void {
+function ponerResolucion(v: number, elegida = true): void {
   RESOLUCION.valor = v;
+  RESOLUCION.elegida ||= elegida;
   renderer.setPixelRatio(v);
   composer.setPixelRatio(v);
   medirSucio();
 }
 
 function pintarNormales(): void {
-  if (valor('contorno') <= 0 && movimiento.cantidad <= 0) return;
+  if (valor('contorno') <= 0) return;
   // Las sombras no hacen falta para pintar normales: sin esto cada cuadro volvía a dibujar los mapas
   // de sombra de la luna y las farolas dos veces.
   renderer.shadowMap.autoUpdate = false;
@@ -228,6 +233,7 @@ addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
   composer.setSize(innerWidth, innerHeight);
+  if (!RESOLUCION.elegida) ponerResolucion(resolucionAutomatica(), false);
   medirSucio();
 });
 
@@ -312,7 +318,7 @@ function pintarPanel(): void {
   const fila = document.createElement('div');
   fila.className = 'tonos';
   const ir = (lugar: string | null) => { location.search = lugar ? `?lugar=${lugar}` : ''; };
-  fila.append(boton('Polígono', !ciudad, () => ir(null)), boton('City Center', !!ciudad, () => ir('city-center')));
+  fila.append(boton('Polígono', !ciudad, () => ir('poligono')), boton('City Center', !!ciudad, () => ir(null)));
   panel.append(fila);
   panel.append(boton('Reponer latas y blancos', false, () => { poligono.reponer(); puntos = 0; tiros = 0; pintarHud(); }));
   const deslizador = (nombre: string, min: number, max: number, paso: number, actual: number, cambiar: (v: number) => void): void => {
@@ -344,7 +350,6 @@ function pintarPanel(): void {
     }
   }
   panel.append(titulo('Cámara'));
-  deslizador('Desenfoque de movimiento', 0, 1.5, 0.05, movimiento.cantidad, (v) => { movimiento.cantidad = v; });
   deslizador('Resolución', 0.5, 2, 0.25, RESOLUCION.valor, ponerResolucion);
   panel.append(titulo('Luna'));
   deslizador('Luz de luna', 0, 3, 0.05, LUNA.luz, (v) => { LUNA.luz = v; sol.intensity = v; });
@@ -566,7 +571,6 @@ let enfriamiento = 0;
 let retroceso = 0;
 let mezclaCamara = 0; // 0 libre, 1 apuntando
 const boca = new THREE.Vector3();
-const giroDelMouse = new THREE.Quaternion();
 
 function disparar(): void {
   tiros++;
@@ -633,6 +637,9 @@ function contarCuadro(): void {
   tiempoContado = 0;
   peorCuadro = 0;
 }
+
+// Solo en desarrollo: para medir el rendimiento desde la consola del navegador.
+if (import.meta.env.DEV) Object.assign(window, { __juego: { renderer, scene, camera, composer, sucio } });
 
 const reloj = new THREE.Timer();
 renderer.setAnimationLoop((t) => {
@@ -717,7 +724,6 @@ renderer.setAnimationLoop((t) => {
   camera.position.copy(foco).addScaledVector(mirada, -distancia);
   camera.position.y = Math.max(0.2, camera.position.y);
   camera.lookAt(foco.clone().addScaledVector(mirada, 10));
-  giroDelMouse.copy(camera.quaternion); // para el desenfoque: el giro sin el retroceso
   if (retroceso > 0) camera.rotateX(retroceso * 0.01);
 
   mira.classList.toggle('visible', estado === 'apuntando');
@@ -731,6 +737,5 @@ renderer.setAnimationLoop((t) => {
   conos.actualizar(sucio.uniforms.tiempo.value);
   ciudad?.actualizar(sucio.uniforms.tiempo.value, jugador.position);
   pintarNormales();
-  movimiento.antes(camera, giroDelMouse, foco, distancia, dt, renderer.getDrawingBufferSize(tamañoPantalla));
   composer.render();
 });

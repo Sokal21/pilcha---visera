@@ -7,6 +7,8 @@
     <style>
       html, body { margin: 0; height: 100%; background: #1b1b1f; color: #eee; font: 15px system-ui, sans-serif; overflow: hidden; }
       canvas { display: block; cursor: pointer; }
+      /* En el build final, sin las herramientas: el panel, el puntaje, los enlaces y la ayuda del panel. */
+      body.produccion #panel, body.produccion #hud, body.produccion #enlaces, body.produccion .esc { display: none !important; }
       #panel { position: fixed; top: 16px; right: 16px; width: 220px; max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; background: #000a; padding: 12px 14px; border-radius: 10px; }
       #panel h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #aaa; margin: 14px 0 6px; }
       #panel h2:first-child { margin-top: 0; }
@@ -38,7 +40,7 @@
       WASD caminar · Shift correr · mouse mirar · Espacio sacar / guardar la pistola (o mantener click derecho) · Click disparar
       <span class="esc"><br />Esc suelta el mouse para usar el panel</span>
     </div>
-    <div style="position:fixed;left:16px;top:52px;font-size:13px">
+    <div id="enlaces" style="position:fixed;left:16px;top:52px;font-size:13px">
       <a href="/armero.html" style="color:#ccc">Armero: acomodar la pistola en la mano</a> ·
       <a href="/fotogramas.html" style="color:#ccc">Fotogramas: animaciones cuadro por cuadro</a>
     </div>
