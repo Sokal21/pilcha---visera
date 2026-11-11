@@ -489,6 +489,7 @@ new GLTFLoader().load(`${import.meta.env.BASE_URL}models/protagonista.glb`, (glt
       o.castShadow = true;
     }
     if ((o as THREE.Bone).isBone && (o.name === 'Spine01' || o.name === 'Spine02')) espalda.push(o as THREE.Bone);
+    if ((o as THREE.Bone).isBone && o.name in GOLPE.grados) huesosGolpe.set(o.name, o as THREE.Bone);
   });
   jugador.add(modelo);
   if (tonos) ponerTonos(tonos);
@@ -567,6 +568,46 @@ function apuntarCaño(dt: number): void {
   }
 }
 
+// El retroceso en el cuerpo, en cada tiro: la mano levanta el caño, el antebrazo y el brazo la
+// acompañan (los dos: la izquierda sostiene la pistola) y el torso se va apenas para atrás, y vuelve.
+// Grados en el pico, sobre el eje de costado del caño (positivo, el caño sube); la mano además se
+// tuerce un poco a un lado distinto cada vez. La curva sube en ~12 ms y se apaga en ~90.
+const GOLPE = {
+  grados: {
+    R_Hand: 9, L_Hand: 7, R_Forearm: 5, L_Forearm: 4, R_Upperarm: 3, L_Upperarm: 2.5, Spine02: 1.5,
+  } as Record<string, number>,
+  costado: 2,
+  sube: 0.012,
+  baja: 0.09,
+};
+const huesosGolpe = new Map<string, THREE.Bone>();
+let desdeTiro = Infinity;
+let ladoGolpe = 0;
+
+/** La forma del golpe en el tiempo: 0 al tirar, sube rápido a 1 y se apaga. */
+function curvaGolpe(t: number): number {
+  const f = (x: number) => Math.exp(-x / GOLPE.baja) * (1 - Math.exp(-x / GOLPE.sube));
+  const pico = (GOLPE.sube * GOLPE.baja / (GOLPE.baja - GOLPE.sube)) * Math.log(GOLPE.baja / GOLPE.sube);
+  return f(t) / f(pico);
+}
+
+function golpeDelTiro(dt: number): void {
+  desdeTiro += dt;
+  const k = curvaGolpe(desdeTiro) * mezclaApunte;
+  const pistola = mallas.get('ropa_pistola');
+  if (k < 0.002 || !pistola) return;
+  const caño = EJE_X.clone().transformDirection(pistola.matrixWorld);
+  const eje = new THREE.Vector3(caño.x, 0, caño.z).normalize().cross(ARRIBA).normalize();
+  // De los de arriba a los de abajo: cada giro arrastra a los que cuelgan de él.
+  for (const nombre of ['Spine02', 'R_Upperarm', 'L_Upperarm', 'R_Forearm', 'L_Forearm', 'R_Hand', 'L_Hand']) {
+    const hueso = huesosGolpe.get(nombre);
+    if (!hueso) continue;
+    const giro = new THREE.Quaternion().setFromAxisAngle(eje, THREE.MathUtils.degToRad(GOLPE.grados[nombre] * k));
+    if (nombre.endsWith('Hand')) giro.multiply(new THREE.Quaternion().setFromAxisAngle(ARRIBA, THREE.MathUtils.degToRad(GOLPE.costado * ladoGolpe * k)));
+    girarEnMundo(hueso, giro);
+  }
+}
+
 let enfriamiento = 0;
 let retroceso = 0;
 let mezclaCamara = 0; // 0 libre, 1 apuntando
@@ -598,6 +639,8 @@ function disparar(): void {
   }
   pintarHud();
   retroceso = 1;
+  desdeTiro = 0;
+  ladoGolpe = Math.random() * 2 - 1;
   pitch = Math.min(0.7, pitch + 0.015);
 }
 
@@ -704,6 +747,7 @@ renderer.setAnimationLoop((t) => {
   mezclaDedos = THREE.MathUtils.damp(mezclaDedos, armada ? 1 : 0, 14, dt);
   pose?.aplicar(posesHuesos.relajada, posesHuesos.pistola, mezclaDedos);
   apuntarCaño(dt);
+  golpeDelTiro(dt);
 
   // La cámara: detrás y arriba; apuntando, cerca del hombro derecho.
   mezclaCamara = THREE.MathUtils.damp(mezclaCamara, estado === 'apuntando' || estado === 'sacando' ? 1 : 0, 8, dt);
