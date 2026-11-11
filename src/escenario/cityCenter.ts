@@ -79,6 +79,9 @@ export class CityCenter {
   readonly lamparas: THREE.Vector3[] = [];
   /** Contra lo que pegan los tiros. */
   readonly solidos: THREE.Object3D[] = [];
+  /** Lo que tapa la vista de un policía hacia el jugador: solo los edificios y los muros (los troncos
+   * y los postes no; y las palmeras, de 6000 triángulos cada una, hacían carísimo cada rayo). */
+  readonly tapanLaVista: THREE.Object3D[] = [];
   /** Lo transparente, que no va en la pasada de normales del contorno. */
   readonly transparentes: THREE.Object3D[] = [];
   /** Lo que solo va en la pasada de normales (la silueta de las lámparas de los muros, para el contorno). */
@@ -137,6 +140,7 @@ export class CityCenter {
         const hotel = armarHotel(puntos);
         this.grupo.add(hotel.grupo);
         this.solidos.push(...hotel.solidos);
+        this.tapanLaVista.push(...hotel.solidos);
         this.paredes.push(hotel.pared);
         continue;
       }
@@ -144,6 +148,7 @@ export class CityCenter {
       const malla = bloque(puntos, desde, e.alto - desde, material);
       this.grupo.add(malla);
       this.solidos.push(malla);
+      this.tapanLaVista.push(malla);
       if (!e.sobre) this.paredes.push(puntos);
     }
 
@@ -168,6 +173,7 @@ export class CityCenter {
       });
       this.grupo.add(muro.grupo);
       this.solidos.push(...muro.solidos);
+      this.tapanLaVista.push(...muro.solidos);
       if (muro.pared) this.paredes.push(muro.pared);
       this.transparentes.push(...muro.transparentes);
       this.soloNormales.push(...muro.soloNormales);

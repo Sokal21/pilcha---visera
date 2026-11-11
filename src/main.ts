@@ -771,6 +771,19 @@ function precalentar(): void {
   for (const o of escondidos) o.visible = false;
 }
 
+// Qué placa de video está usando el navegador, al lado de los FPS: si dice SwiftShader, llvmpipe o
+// "Basic Render", dibuja sin la placa (la aceleración por hardware está apagada) y anda mal en cualquier
+// máquina; si dice el video integrado (Intel/UHD) en una PC con placa, el navegador eligió la otra.
+const PLACA = (() => {
+  const gl = renderer.getContext();
+  const info = gl.getExtension('WEBGL_debug_renderer_info');
+  const nombre = String(info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER));
+  console.info('Placa de video:', nombre);
+  // Lo más corto que la identifique: "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 Direct3D11 ...)" -> "NVIDIA GeForce RTX 4070".
+  const corto = nombre.match(/ANGLE \([^,]+, ([^,(]+?)(?: Direct3D| \(|,|$)/)?.[1] ?? nombre;
+  return corto.trim().slice(0, 48);
+})();
+
 // Contador de cuadros: el promedio y el peor cuadro de cada medio segundo (las trabas se ven en el peor).
 const contador = document.getElementById('fps')!;
 let cuadrosContados = 0;
@@ -787,7 +800,7 @@ function contarCuadro(): void {
   peorCuadro = Math.max(peorCuadro, ms);
   if (tiempoContado < 500) return;
   const fps = (cuadrosContados * 1000) / tiempoContado;
-  contador.textContent = `${fps.toFixed(0)} FPS · peor ${peorCuadro.toFixed(0)} ms`;
+  contador.textContent = `${fps.toFixed(0)} FPS · peor ${peorCuadro.toFixed(0)} ms${PLACA ? ` · ${PLACA}` : ''}`;
   contador.classList.toggle('traba', peorCuadro > 50);
   cuadrosContados = 0;
   tiempoContado = 0;

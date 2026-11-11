@@ -34,6 +34,7 @@ const ESQUIVE = { paso: THREE.MathUtils.degToRad(30), intentos: 5, recuerda: 1.2
 const SE_QUEDA_MUERTO = 8; // segundos tirado antes de desaparecer
 const RADIO = 0.4; // para no encimarse entre ellos
 const ALTO = 1.75;
+const MIRAR_CADA = 0.25; // segundos entre una y otra vez que se fija si te ve
 const ARRIBA = new THREE.Vector3(0, 1, 0);
 
 type Estado = 'viene' | 'apunta' | 'muere';
@@ -48,6 +49,8 @@ interface Enemigo {
   mirando: number;
   correccion: number; // cuánto más gira para que el caño apunte al jugador
   desvio: number; // cuánto se gira el modelo para que el clip avance hacia donde va
+  ve: boolean; // si ve al jugador (se revisa cada MIRAR_CADA)
+  mirarEn: number;
   lado: number; // hacia qué costado está esquivando (1 o -1) y por cuánto más
   esquivando: number;
   enfriamiento: number;
@@ -125,7 +128,13 @@ export class Enemigos {
       const d = hacia.length();
       hacia.normalize();
       const suPecho = p.clone().setY(p.y + 1.3 * e.escala);
-      const ve = d < RANGO + 6 && this.o.poligono.visible(suPecho, pecho);
+      // Si lo ve: un rayo contra los edificios, cada tanto (cada uno a su turno), no en cada cuadro.
+      e.mirarEn -= dt;
+      if (e.mirarEn <= 0) {
+        e.ve = d < RANGO + 6 && this.ve(suPecho, pecho);
+        e.mirarEn = MIRAR_CADA * (0.8 + Math.random() * 0.4);
+      }
+      const ve = e.ve;
       e.sinVer = ve ? 0 : e.sinVer + dt;
 
       if (!vivo) {
@@ -260,7 +269,7 @@ export class Enemigos {
     const mirando = Math.atan2(jugador.x - lugar.x, jugador.z - lugar.z);
     raiz.rotation.y = mirando;
     const e: Enemigo = {
-      raiz, mixer, acciones, actual: null, estado: 'viene', vida: CUERPO, mirando, correccion: 0, desvio: 0, lado: 1, esquivando: 0,
+      raiz, mixer, acciones, actual: null, estado: 'viene', vida: CUERPO, mirando, correccion: 0, desvio: 0, ve: false, mirarEn: Math.random() * MIRAR_CADA, lado: 1, esquivando: 0,
       enfriamiento: 1, apuntando: 0, sinVer: 0, muertoHace: 0, cuerpos, cabeza, pistola, escala,
     };
     this.pasar(e, 'corrida', 0);
@@ -281,6 +290,15 @@ export class Enemigos {
     if (!accion) return 1.5;
     const c = CAMINATA[clip];
     return (2 * c.paso * e.escala * c.ritmo) / accion.getClip().duration;
+  }
+
+  /** Si de `desde` se ve `hasta`: nada de los edificios en el medio. */
+  private ve(desde: THREE.Vector3, hasta: THREE.Vector3): boolean {
+    const dir = hasta.clone().sub(desde);
+    const largo = dir.length();
+    this.rayo.set(desde, dir.normalize());
+    this.rayo.far = largo - 0.3;
+    return this.rayo.intersectObjects(this.o.ciudad.tapanLaVista, false).length === 0;
   }
 
   /** Sin meterse en paredes ni troncos: si no puede derecho, prueba girando hacia el costado que viene
