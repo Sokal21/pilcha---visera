@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Una gorra de costado, en rojo y negro (Newell's): la copa, la visera, el botón y una costura. -->
+  <g stroke="#f4f1ea" stroke-width="3" stroke-linejoin="round">
+    <!-- La visera, hacia la derecha. -->
+    <path d="M30 40 C40 36, 52 36, 61 41 C55 46, 42 47, 30 45 Z" fill="#111"/>
+    <!-- La copa. -->
+    <path d="M6 44 C5 24, 18 13, 33 13 C47 13, 54 24, 53 40 C40 38, 22 40, 6 44 Z" fill="#c8102e"/>
+  </g>
+  <!-- La costura del medio y el botón. -->
+  <path d="M31 14 C27 22, 26 32, 27 41" fill="none" stroke="#111" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="32" cy="12.5" r="3" fill="#111" stroke="#f4f1ea" stroke-width="2"/>
+</svg>
