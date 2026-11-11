@@ -93,6 +93,11 @@ export class CityCenter {
   private readonly paredes: THREE.Vector2[][] = [];
   private readonly postes: { p: THREE.Vector2; r: number }[] = [];
   private readonly zona: THREE.Vector2[];
+
+  /** La zona jugable (las paredes invisibles), en metros (x, z). */
+  get zonaJugable(): THREE.Vector2[] {
+    return this.zona;
+  }
   private readonly entrada: ReturnType<typeof armarEntrada>;
   private readonly lucesFarolas: THREE.SpotLight[] = [];
 

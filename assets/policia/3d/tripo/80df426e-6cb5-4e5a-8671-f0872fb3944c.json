@@ -1,0 +1,18 @@
+{
+  "type": "animate_rig",
+  "status": "success",
+  "progress": 100,
+  "input": {
+    "topology": "biped",
+    "out_format": "glb",
+    "original_model_id": "c983b85b-31dc-4917-896d-863ae4b6adb2"
+  },
+  "output": {
+    "model_url": "https://openapi-dl.data.tripo3d.com/tcli_a4dbe96f28da4d519a0267e9d8fc389e/20261111/80df426e-6cb5-4e5a-8671-f0872fb3944c/tripo_rigging_80df426e-6cb5-4e5a-8671-f0872fb3944c.glb?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9vcGVuYXBpLWRsLmRhdGEudHJpcG8zZC5jb20vdGNsaV9hNGRiZTk2ZjI4ZGE0ZDUxOWEwMjY3ZTlkOGZjMzg5ZS8yMDI2MTExMS84MGRmNDI2ZS02Y2I1LTRlNWEtODY3MS1mMDg3MmZiMzk0NGMvdHJpcG9fcmlnZ2luZ184MGRmNDI2ZS02Y2I1LTRlNWEtODY3MS1mMDg3MmZiMzk0NGMuZ2xiIiwiQ29uZGl0aW9uIjp7IkRhdGVMZXNzVGhhbiI6eyJBV1M6RXBvY2hUaW1lIjoxNzk0NDQzNzk2fX19XX0_&Signature=BKS6uPOOBtWE0aoz7wcq7GsIHn~oYB8SJMlPlbUDs3sz~qEODwELWZARqUTDhHaj9FVfTv-PMumjK~QQJgIahJHOo-guoindFSavMjExoxyvdK4BGphu7dPwkF7HogX5gVcyVSD9NU9OV~PRLbzo0WMyCZYPEQIjyEBcqccTUrXgyiBBhkRLsF-TtKKFHeCcdc97tfBtT~2mazT9lZvmwXnWbgPYBoWMxIfFsyEQJx-6rU6ZMhr2PTbhcRMHIashsjg67kDz2rSOrCC-57mQXjG~y44N0OeVDar9IL9kWkUFuXc-9af3upSps7kirVpwOsiNjyA4~zW947FVzRHstA__&Key-Pair-Id=K1676C64NMVM2J",
+    "rendered_image_url": "https://openapi-dl.data.tripo3d.com/tcli_a4dbe96f28da4d519a0267e9d8fc389e/20261111/80df426e-6cb5-4e5a-8671-f0872fb3944c/legacy_mesh.webp?Policy=eyJTdGF0ZW1lbnQiOlt7IlJlc291cmNlIjoiaHR0cHM6Ly9vcGVuYXBpLWRsLmRhdGEudHJpcG8zZC5jb20vdGNsaV9hNGRiZTk2ZjI4ZGE0ZDUxOWEwMjY3ZTlkOGZjMzg5ZS8yMDI2MTExMS84MGRmNDI2ZS02Y2I1LTRlNWEtODY3MS1mMDg3MmZiMzk0NGMvbGVnYWN5X21lc2gud2VicCIsIkNvbmRpdGlvbiI6eyJEYXRlTGVzc1RoYW4iOnsiQVdTOkVwb2NoVGltZSI6MTc5NDQ0Mzc5Nn19fV19&Signature=fysCtdM1Bz2sHyCHRiqLCClveuKPulxCWs2z7k0eNfp7SXQuuML5wp~2bQu8B9dwPy3~OwTBreqmSiYhkmvvRi4gOccqaNB2kTbhGJyMODBWMQzkYGsT23R8wKhXToRRsnESTJ2jvXlM9rv~3dfTikJlowUmaJc27k8YgDA2sEnZPa31jqaM7VFK~OS9PjvJPtFWH15OQQ0DAYd4~flFAAaDwdANP4sIK0hTF8fLt4N5cYGGu0fyKU0mxFkGjlV0mfghctUepp8VmshI6jSdKC4IdtE~gIKG0-6CktsDQdF4KDexRIypPIgT4R8viNvLSo8S5dLJOVrix6zoBP3Cpw__&Key-Pair-Id=K1676C64NMVM2J"
+  },
+  "task_id": "80df426e-6cb5-4e5a-8671-f0872fb3944c",
+  "created_at": "2026-11-11T00:36:25.840773Z",
+  "completed_at": "2026-11-11T00:36:28.201526Z",
+  "credits_consumed": 25.0
+}

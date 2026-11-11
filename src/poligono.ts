@@ -193,6 +193,20 @@ export class Poligono {
     this.externos.push(objetos);
   }
 
+  /** Si se ve de `desde` a `hasta` (nada sólido en el medio, salvo el piso y las latas). */
+  visible(desde: THREE.Vector3, hasta: THREE.Vector3): boolean {
+    const dir = hasta.clone().sub(desde);
+    const largo = dir.length();
+    const rayo = new THREE.Raycaster(desde, dir.normalize(), 0.1, largo - 0.3);
+    const objetos = [...this.solidos, ...this.externos.flat()].filter((o) => !(o as THREE.Mesh).geometry?.type?.startsWith('Plane'));
+    return rayo.intersectObjects(objetos, false).length === 0;
+  }
+
+  /** Un impacto en un cuerpo: una salpicadura roja oscura. */
+  sangre(punto: THREE.Vector3): void {
+    this.chispa(punto, 0x8a0f12);
+  }
+
   /** Hasta dónde llega una mirada desde `origen` hacia `dir`: lo primero que toca, o 40 m. */
   alcance(origen: THREE.Vector3, dir: THREE.Vector3): THREE.Vector3 {
     const rayo = new THREE.Raycaster(origen, dir, 0.5, 120);

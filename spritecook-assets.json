@@ -54,5 +54,19 @@
       "a": "ea5d2af0-dc3d-4214-af27-a9ffe12d6601",
       "b_elegida": "0d64707d-0b63-4c8f-b9dd-17229a1ed7bb"
     }
+  },
+  "policia": {
+    "nota": "Enemigo: policía federal (PFA). Lámina de cuatro vistas; elegida la B (campera abierta) y editada con gorra PFA y otra cara (bigote); elegida la A de esa edición. Tripo multiview c983b85b-31dc-4917-896d-863ae4b6adb2, rig v1.0 80df426e-6cb5-4e5a-8671-f0872fb3944c -> public/models/policia.glb (vestir.py --solo 1).",
+    "laminas": {
+      "job": "04e33017-bce7-41c4-be8b-58bbb0394199",
+      "a_cerrada": "92d9fd7a-ff2c-4d44-832c-f5f1a258249a",
+      "b_abierta": "91ed7013-4cd9-43cb-a35e-40477d6e2176"
+    },
+    "con_gorra": {
+      "job": "41e90305-f6a8-4e5b-886c-a8765fb3681d",
+      "edit_of": "b_abierta",
+      "a_elegida": "07349c6c-0060-47b5-a54e-88ec76ed256c",
+      "b": "fd745699-2289-42a7-8f12-fb61935c4ac2"
+    }
   }
 }

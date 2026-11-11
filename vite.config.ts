@@ -40,7 +40,7 @@ function guardarAjustes(): Plugin {
 const THREE_ADDONS = [
   'controls/OrbitControls', 'controls/TransformControls', 'geometries/TextGeometry', 'loaders/FontLoader',
   'loaders/GLTFLoader', 'postprocessing/EffectComposer', 'postprocessing/OutputPass', 'postprocessing/RenderPass',
-  'postprocessing/ShaderPass', 'postprocessing/UnrealBloomPass', 'utils/BufferGeometryUtils',
+  'postprocessing/ShaderPass', 'postprocessing/UnrealBloomPass', 'utils/BufferGeometryUtils', 'utils/SkeletonUtils',
 ].map((a) => `three/addons/${a}.js`);
 
 export default defineConfig({

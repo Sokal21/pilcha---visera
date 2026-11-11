@@ -23,7 +23,25 @@
       body:not(.jugando) #ayuda .esc { display: none; }
       #fps { position: fixed; left: 16px; top: 14px; background: #0008; padding: 4px 10px; border-radius: 8px; font: 600 12px ui-monospace, monospace; color: #9e9; }
       #fps.traba { color: #f86; }
-      #hud { position: fixed; left: 16px; top: 44px; background: #0008; padding: 6px 12px; border-radius: 8px; font-weight: 600; }
+      #vida { position: fixed; left: 16px; top: 44px; display: flex; align-items: center; gap: 10px; background: #0008; padding: 6px 12px; border-radius: 8px; font-weight: 600; }
+      #vida .barra { width: 140px; height: 10px; background: #fff2; border-radius: 5px; overflow: hidden; }
+      #vida .barra i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, #c22, #f55); transition: width .2s; }
+      /* La marca de impacto: cuatro triangulitos en diagonal que apuntan a la mira. */
+      #marca { position: fixed; left: 50%; top: 50%; width: 0; height: 0; pointer-events: none; opacity: 0; }
+      #marca i { position: absolute; left: -2px; top: -16px; width: 4px; height: 9px; background: #fff; clip-path: polygon(50% 100%, 0 0, 100% 0); filter: drop-shadow(0 0 1px #000); transform-origin: 2px 16px; }
+      #marca i:nth-child(1) { transform: rotate(45deg); }
+      #marca i:nth-child(2) { transform: rotate(135deg); }
+      #marca i:nth-child(3) { transform: rotate(225deg); }
+      #marca i:nth-child(4) { transform: rotate(315deg); }
+      #marca.ahora { animation: marca .28s ease-out; }
+      #marca.mato i { background: #ff3b30; height: 11px; }
+      @keyframes marca { 0% { opacity: 1; transform: scale(1.5); } 25% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.1); } }
+      #daño { position: fixed; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 45%, #c00a 100%); opacity: 0; transition: opacity .5s; }
+      #daño.ahora { opacity: 1; transition: none; }
+      #fin { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; background: #000a; font-size: 44px; font-weight: 800; letter-spacing: .04em; color: #f44; }
+      #fin small { font-size: 16px; font-weight: 500; color: #ddd; letter-spacing: 0; }
+      #fin.visible { display: flex; }
+      #hud { position: fixed; left: 16px; top: 78px; background: #0008; padding: 6px 12px; border-radius: 8px; font-weight: 600; }
       #mira { position: fixed; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; box-sizing: border-box; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 0 2px #000, inset 0 0 2px #000; pointer-events: none; opacity: 0; transition: opacity .15s; }
       #mira.visible { opacity: 1; }
       #mira::after { content: ''; position: absolute; left: 50%; top: 50%; width: 4px; height: 4px; margin: -2px 0 0 -2px; border-radius: 50%; background: #fff; box-shadow: 0 0 2px #000; }
@@ -32,6 +50,10 @@
   </head>
   <body>
     <div id="fps"></div>
+    <div id="vida"><span id="vida-texto">Vida 100</span><span class="barra"><i></i></span><span id="bajas">Bajas 0</span></div>
+    <div id="daño"></div>
+    <div id="marca"><i></i><i></i><i></i><i></i></div>
+    <div id="fin">TE AGARRARON<small id="fin-texto"></small><small>Click para volver a empezar</small></div>
     <div id="hud"></div>
     <div id="mira"></div>
     <div id="panel"></div>
@@ -40,7 +62,7 @@
       WASD caminar · Shift correr · mouse mirar · Espacio sacar / guardar la pistola (o mantener click derecho) · Click disparar
       <span class="esc"><br />Esc suelta el mouse para usar el panel</span>
     </div>
-    <div id="enlaces" style="position:fixed;left:16px;top:52px;font-size:13px">
+    <div id="enlaces" style="position:fixed;left:16px;top:112px;font-size:13px">
       <a href="/armero.html" style="color:#ccc">Armero: acomodar la pistola en la mano</a> ·
       <a href="/fotogramas.html" style="color:#ccc">Fotogramas: animaciones cuadro por cuadro</a>
     </div>

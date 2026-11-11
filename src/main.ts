@@ -13,6 +13,7 @@ import { AJUSTES, ajustar, pasoSucio, valor } from './sucio';
 import { Conos } from './conos';
 import { Faldon } from './faldon';
 import { Luna } from './luna';
+import { Enemigos } from './enemigos';
 import { CityCenter, COLOR_FAROLAS } from './escenario/cityCenter';
 import { Pose, posesHuesos } from './huesos';
 
@@ -251,13 +252,22 @@ const acciones = new Map<string, THREE.AnimationAction>();
 let actual: THREE.AnimationAction | null = null;
 let reposo = 'reposo_abierto';
 let enfundar: THREE.AnimationAction | null = null;
+// Las piernas mientras se saca o se guarda la pistola: las de apuntar quieto o las de caminar
+// apuntando, mezcladas según se mueva; `mezcla` las hace entrar y salir con el estado.
+const PIERNAS = /^[LR]_(Thigh|Calf|Foot|ToeBase)/;
+const piernas = {
+  quietas: null as THREE.AnimationAction | null,
+  caminando: null as THREE.AnimationAction | null,
+  mezcla: 0,
+  camina: 0,
+};
 let faldon: Faldon | null = null;
 let pose: Pose | null = null;
 let mezclaDedos = 0; // 0 relajada, 1 empuñando
 let modelo: THREE.Object3D | null = null;
 const espalda: THREE.Bone[] = [];
 
-type Estado = 'libre' | 'sacando' | 'apuntando' | 'guardando';
+type Estado = 'libre' | 'sacando' | 'apuntando' | 'guardando' | 'muerto';
 let estado: Estado = 'libre';
 let armada = false;
 
@@ -439,6 +449,10 @@ renderer.domElement.addEventListener('mousedown', (e) => {
     renderer.domElement.requestPointerLock();
     return;
   }
+  if (estado === 'muerto') {
+    if (fin.classList.contains('visible')) volverAEmpezar();
+    return;
+  }
   if (e.button === 0) disparoPendiente = true;
   if (e.button === 2) quiereApuntar = true;
 });
@@ -504,12 +518,30 @@ new GLTFLoader().load(`${import.meta.env.BASE_URL}models/protagonista.glb`, (glt
   for (const nombre of Object.keys(CAMINATAS) as (keyof typeof CAMINATAS)[]) {
     acciones.get(nombre)?.setEffectiveTimeScale(CAMINATAS[nombre].ritmo);
   }
+  const muerte = acciones.get('muerte');
+  if (muerte) {
+    muerte.setLoop(THREE.LoopOnce, 1);
+    muerte.clampWhenFinished = true;
+  }
   const guardar = THREE.AnimationClip.findByName(gltf.animations, 'pistola_guardar');
   if (guardar) {
+    // Sacarla y guardarla mueve solo de la cadera para arriba: las piernas van aparte (quietas o
+    // caminando), así se puede caminar mientras tanto.
     const parte = THREE.AnimationUtils.subclip(guardar, 'enfundar', GUARDAR.desde, GUARDAR.hasta, GUARDAR.fps);
+    parte.tracks = parte.tracks.filter((t) => !PIERNAS.test(t.name));
     enfundar = mixer.clipAction(parte);
     enfundar.setLoop(THREE.LoopOnce, 1);
     enfundar.clampWhenFinished = true;
+    const soloPiernas = (nombre: string) => {
+      const clip = THREE.AnimationClip.findByName(gltf.animations, nombre);
+      if (!clip) return null;
+      const c = clip.clone();
+      c.name = `${nombre}_piernas`;
+      c.tracks = c.tracks.filter((t) => PIERNAS.test(t.name));
+      return mixer!.clipAction(c);
+    };
+    piernas.quietas = soloPiernas('pistola_reposo');
+    piernas.caminando = soloPiernas('pistola_caminata');
   }
   pasarA(acciones.get(reposo), 0);
   vestir();
@@ -548,6 +580,73 @@ let giroApunte = 0;
 let mezclaApunte = 0;
 let dobleEspalda = 0;
 const EJE_X = new THREE.Vector3(-1, 0, 0); // hacia la boca, en la malla de la pistola
+
+// --- Los policías y la vida del jugador (solo en el City Center) ---
+
+const VIDA = 100;
+let vida = VIDA;
+let bajas = 0;
+const vidaTexto = document.getElementById('vida-texto')!;
+const vidaBarra = document.querySelector<HTMLElement>('#vida .barra i')!;
+const bajasTexto = document.getElementById('bajas')!;
+const daño = document.getElementById('daño')!;
+const fin = document.getElementById('fin')!;
+document.getElementById('vida')!.style.display = ciudad ? '' : 'none';
+
+function pintarVida(): void {
+  vidaTexto.textContent = `Vida ${Math.max(0, vida)}`;
+  vidaBarra.style.width = `${(Math.max(0, vida) / VIDA) * 100}%`;
+  bajasTexto.textContent = `Bajas ${bajas}`;
+}
+
+/** La marca de impacto en la mira (roja si lo mató); se vuelve a disparar en cada tiro. */
+const marca = document.getElementById('marca')!;
+function mostrarMarca(mato: boolean): void {
+  marca.classList.remove('ahora');
+  marca.classList.toggle('mato', mato);
+  void marca.offsetWidth; // reinicia la animación aunque la anterior no haya terminado
+  marca.classList.add('ahora');
+}
+
+function recibirDaño(d: number): void {
+  if (estado === 'muerto') return;
+  vida -= d;
+  pintarVida();
+  // Un destello rojo en los bordes, que se apaga solo.
+  daño.classList.add('ahora');
+  requestAnimationFrame(() => requestAnimationFrame(() => daño.classList.remove('ahora')));
+  if (vida <= 0) morirJugador();
+}
+
+function morirJugador(): void {
+  estado = 'muerto';
+  quiereApuntar = false;
+  pasarA(acciones.get('muerte'), 0.15);
+  document.getElementById('fin-texto')!.textContent = `Bajas: ${bajas}`;
+  setTimeout(() => fin.classList.add('visible'), 1500);
+}
+
+function volverAEmpezar(): void {
+  vida = VIDA;
+  bajas = 0;
+  pintarVida();
+  fin.classList.remove('visible');
+  enemigos?.reiniciar();
+  if (ciudad) {
+    jugador.position.set(ciudad.inicio.x, 0, ciudad.inicio.z);
+    yaw = ciudad.inicio.yaw;
+    mirando = yaw + Math.PI;
+  }
+  armar(false);
+  estado = 'libre';
+  pasarA(acciones.get(reposo));
+}
+
+const enemigos = ciudad ? new Enemigos({
+  escena: scene, ciudad, poligono, fogonazo, boca: BOCA, eje: EJE_X,
+  alPegarte: recibirDaño,
+  alMorir: () => { bajas++; pintarVida(); },
+}) : null;
 function apuntarCaño(dt: number): void {
   mezclaApunte = THREE.MathUtils.damp(mezclaApunte, estado === 'apuntando' ? 1 : 0, 6, dt);
   const pistola = mallas.get('ropa_pistola');
@@ -629,6 +728,20 @@ function disparar(): void {
     sale.z += (Math.random() - 0.5) * 0.25;
     poligono.vaina(ventana, sale.normalize().multiplyScalar(VAINA_VELOCIDAD * (0.85 + Math.random() * 0.3)));
   }
+  // Primero los policías: si alguno está antes que lo que hay detrás, el tiro es para él.
+  const mundo = poligono.alcance(origen, dir).distanceTo(origen);
+  const policia = enemigos?.impacto(origen, dir, mundo);
+  if (policia) {
+    mostrarMarca(policia.mato);
+    poligono.sangre(policia.punto);
+    if (pistola) poligono.trazo(boca, policia.punto);
+    ultimo = policia.mato ? (policia.cabeza ? '¡A la cabeza!' : 'Baja') : '';
+    pintarHud();
+    retroceso = 1;
+    desdeTiro = 0;
+    ladoGolpe = Math.random() * 2 - 1;
+    return;
+  }
   const hit = poligono.disparar(origen, dir);
   if (hit) {
     if (pistola) poligono.trazo(boca, hit.punto);
@@ -698,12 +811,14 @@ renderer.setAnimationLoop((t) => {
   if (teclas.has('KeyS')) quiere.sub(adelante);
   if (teclas.has('KeyD')) quiere.add(derecha);
   if (teclas.has('KeyA')) quiere.sub(derecha);
-  const mueve = quiere.lengthSq() > 0 && (estado === 'libre' || estado === 'apuntando');
+  const mueve = quiere.lengthSq() > 0 && estado !== 'muerto';
   if (mueve) quiere.normalize();
   if (quiereApuntar && estado === 'libre') alternarArma();
   else if (!quiereApuntar && estado === 'apuntando') alternarArma();
 
-  if (estado === 'libre') {
+  if (estado === 'muerto') {
+    // Tirado: la animación de muerte, nada más.
+  } else if (estado === 'libre') {
     if (mueve) {
       const paso = teclas.has('ShiftLeft') || teclas.has('ShiftRight') ? 'corrida' : 'caminata';
       caminar(quiere, velocidad(paso) * dt);
@@ -730,8 +845,16 @@ renderer.setAnimationLoop((t) => {
       enfriamiento = CADENCIA;
     }
   } else if (enfundar) {
-    // Sacándola o guardándola: quieto, la pistola aparece o desaparece al pasar por la funda.
+    // Sacándola o guardándola: de cara a donde mira la cámara, caminando a paso normal si se mueve
+    // (las piernas, las de caminar apuntando; para atrás, al revés). La pistola aparece o
+    // desaparece al pasar por la funda.
     mirando = anguloHacia(mirando, yaw + Math.PI, dt * 8);
+    if (mueve) {
+      caminar(quiere, velocidad('pistola_caminata') * dt);
+      const atras = quiere.dot(adelante) < -0.3;
+      piernas.caminando?.setEffectiveTimeScale(CAMINATAS.pistola_caminata.ritmo * (atras ? -1 : 1));
+    }
+    piernas.camina = THREE.MathUtils.damp(piernas.camina, mueve ? 1 : 0, 10, dt);
     const funda = (GUARDAR.funda - GUARDAR.desde) / GUARDAR.fps;
     armar(enfundar.time < funda);
     const fin = enfundar.getClip().duration;
@@ -739,6 +862,16 @@ renderer.setAnimationLoop((t) => {
     if (estado === 'guardando' && enfundar.time >= fin - 0.001) estado = 'libre';
   }
   disparoPendiente = false;
+  // Las piernas aparte, solo mientras se saca o se guarda la pistola: entran y salen suaves.
+  piernas.mezcla = THREE.MathUtils.damp(piernas.mezcla, estado === 'sacando' || estado === 'guardando' ? 1 : 0, 12, dt);
+  for (const [accion, peso] of [[piernas.quietas, 1 - piernas.camina], [piernas.caminando, piernas.camina]] as const) {
+    if (!accion) continue;
+    if (piernas.mezcla > 0.01) {
+      if (!accion.isRunning()) accion.reset().play();
+      accion.setEffectiveWeight(peso * piernas.mezcla);
+    } else if (accion.isRunning()) accion.stop();
+  }
+  if (piernas.mezcla <= 0.01) piernas.camina = 0;
   jugador.rotation.y = mirando + giroApunte * mezclaApunte;
   pose?.antes(posesHuesos.relajada, posesHuesos.pistola);
   mixer?.update(dt);
@@ -750,7 +883,9 @@ renderer.setAnimationLoop((t) => {
   golpeDelTiro(dt);
 
   // La cámara: detrás y arriba; apuntando, cerca del hombro derecho.
-  mezclaCamara = THREE.MathUtils.damp(mezclaCamara, estado === 'apuntando' || estado === 'sacando' ? 1 : 0, 8, dt);
+  // Cerca mientras la pistola está afuera, también guardándola: la cámara se aleja recién al terminar
+  // (alejada antes, se veían las piernas de la mezcla).
+  mezclaCamara = THREE.MathUtils.damp(mezclaCamara, estado === 'apuntando' || estado === 'sacando' || estado === 'guardando' ? 1 : 0, 8, dt);
   const a = CAMARA.libre;
   const b = CAMARA.apuntando;
   const m = mezclaCamara;
@@ -780,6 +915,7 @@ renderer.setAnimationLoop((t) => {
   sucio.uniforms.tiempo.value += dt;
   conos.actualizar(sucio.uniforms.tiempo.value);
   ciudad?.actualizar(sucio.uniforms.tiempo.value, jugador.position);
+  enemigos?.actualizar(dt, jugador.position, estado !== 'muerto');
   pintarNormales();
   composer.render();
 });

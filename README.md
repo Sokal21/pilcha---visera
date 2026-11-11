@@ -37,7 +37,28 @@ $B -b --python tools/blender/vestir.py -- public/models/protagonista.glb \
   assets/protagonista/3d/anims/caminata.glb assets/protagonista/3d/anims/corrida.glb \
   assets/protagonista/3d/anims/pistola_apuntar.glb \
   assets/protagonista/3d/anims/pistola_reposo.glb assets/protagonista/3d/anims/pistola_caminata.glb \
+  assets/protagonista/3d/anims/muerte.glb \
   --jordan assets/zapatillas/3d/tripo/jordan/b6f8bcf0-efdd-444b-b24b-067eb0b0eb2d_model_url.glb \
   --nike assets/zapatillas/3d/tripo/nike/dd3fb45f-70e3-4cf1-b3f4-f03268b3e4e2_model_url.glb \
   --pistola assets/pistola/glock19.fbx --pistola-textura assets/pistola/glock_color_1k.png
 ```
+
+## Los policías (enemigos)
+
+Policía federal (PFA): lámina de SpriteCook (`spritecook-assets.json`, `policia`), Tripo multiview y
+rig v1.0 (`assets/policia/3d/`), los mismos clips del protagonista más `Pistol Walk Patrulla.fbx`
+(`patrulla`, `--gait --feet --twist 1`) y `Dying.fbx` (`muerte`, `--ground`; también va al
+protagonista). Como la ropa viene puesta, `vestir.py --solo 1` arma el cuerpo entero con dedos, pies,
+clips de pistola girados y la Glock:
+
+```
+A=assets/policia/3d/anims
+$B -b --python tools/blender/vestir.py -- public/models/policia.glb assets/policia/3d/rig.glb \
+  $A/reposo.glb $A/reposo_orco.glb $A/reposo_abierto.glb $A/caminata.glb $A/corrida.glb \
+  $A/pistola_guardar.glb $A/pistola_reposo.glb $A/pistola_caminata.glb $A/patrulla.glb $A/muerte.glb \
+  --solo 1 --pistola assets/pistola/glock19.fbx --pistola-textura assets/pistola/glock_color_1k.png
+```
+
+En el juego (`src/enemigos.ts`) aparecen sin parar por los bordes de la zona, como mucho cinco a la
+vez; persiguen, se paran a disparar cuando te tienen a tiro y mueren con un tiro a la cabeza o cuatro
+al cuerpo.

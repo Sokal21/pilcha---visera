@@ -22,8 +22,10 @@ const ROPAS: Record<string, string[]> = {
 const NOMBRES: Record<string, string> = {
   caminata: 'Caminata', corrida: 'Corrida', reposo: 'Reposo zombie', reposo_suave: 'Zombie, cuello suave', reposo_orco: 'Reposo orco',
   reposo_abierto: 'Piernas abiertas', pistola_reposo: 'Apuntando quieto', pistola_caminata: 'Caminando apuntando',
-  pistola_guardar: 'Guardar la pistola (al revés, sacarla)',
+  pistola_guardar: 'Guardar la pistola (al revés, sacarla)', patrulla: 'Patrulla (caminando con el arma)', muerte: 'Muerte',
 };
+// Qué personaje (?personaje=policia): el policía tiene la ropa puesta, sin conjuntos.
+const PERSONAJE = new URLSearchParams(location.search).get('personaje') === 'policia' ? 'policia' : 'protagonista';
 
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
@@ -50,6 +52,9 @@ const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as 
 const selClip = $<HTMLSelectElement>('clip');
 const selRopa = $<HTMLSelectElement>('ropa');
 const linea = $<HTMLInputElement>('linea');
+const selPersonaje = $<HTMLSelectElement>('personaje');
+selPersonaje.value = PERSONAJE;
+selPersonaje.onchange = () => { location.search = selPersonaje.value === 'policia' ? '?personaje=policia' : ''; };
 const cartel = $('cartel');
 
 let mixer: THREE.AnimationMixer | null = null;
@@ -128,7 +133,7 @@ function vista(id: string): void {
 }
 
 let modelo: THREE.Object3D | null = null;
-new GLTFLoader().load(`${import.meta.env.BASE_URL}models/protagonista.glb`, (gltf) => {
+new GLTFLoader().load(`${import.meta.env.BASE_URL}models/${PERSONAJE}.glb`, (gltf) => {
   modelo = gltf.scene;
   modelo.scale.setScalar(ALTO);
   modelo.traverse((o) => {
